@@ -1,9 +1,16 @@
 import { vi } from "vitest";
 import type { AgentConfigLookup } from "#src/config/agent-types";
 import type { ChildLifecyclePublisher } from "#src/lifecycle/child-lifecycle";
+import type { ContinuedTranscript, ReopenedSessionManagerLike } from "#src/lifecycle/create-subagent-session";
+import type { ParentSnapshot } from "#src/lifecycle/parent-snapshot";
+import type { BranchEntryLike } from "#src/session/recorded-model";
 import type { AssemblerIO } from "#src/session/session-config";
+import type { TranscriptEntryLike } from "#src/session/transcript-branch";
+import type { ChildTranscriptHeader } from "#src/session/transcript-header";
 import type { AgentConfig, PromptInheritance, ShellExec } from "#src/types";
+import { makeModel } from "#test/helpers/make-model";
 import { createMockSession } from "#test/helpers/mock-session";
+import { STUB_SNAPSHOT } from "#test/helpers/stub-ctx";
 
 /** Default AgentConfig returned by createAgentLookup. Matches the Explore stub used in factory tests. */
 const DEFAULT_AGENT_CONFIG: AgentConfig = {
@@ -41,6 +48,11 @@ export function createSubagentSessionIO() {
 			getSessionFile: vi.fn().mockReturnValue("/sessions/child.jsonl"),
 			getSessionId: vi.fn().mockReturnValue("child-session-id"),
 		}),
+		// A reopened transcript: EARLIER_TRANSCRIPT's child, whose branch selects
+		// EARLIER_MODEL unless a test arms getBranch.
+		openSessionManager: vi.fn((_transcript: string) => createReopenedSessionManager()),
+		// What EARLIER_TRANSCRIPT's file says before it is opened: the same child.
+		readTranscriptHeader: vi.fn((_transcript: string): ChildTranscriptHeader | undefined => ({ ...EARLIER_TRANSCRIPT.header })),
 		createSettingsManager: vi.fn().mockReturnValue({}),
 		// Identity by default: no package exclusions, so children inherit everything.
 		createLoaderSettingsManager: vi.fn().mockImplementation((parent: unknown) => parent),
@@ -90,6 +102,7 @@ export function createSubagentSessionDeps(overrides?: {
 	lifecycle?: ReturnType<typeof createChildLifecycleMock>;
 	resolvePromptInheritance?: (provider: string | undefined) => PromptInheritance;
 	listParentToolNames?: () => readonly string[];
+	currentAgentConfig?: (type: string) => AgentConfig | undefined;
 }) {
 	return {
 		io: overrides?.io ?? createSubagentSessionIO(),
@@ -101,6 +114,9 @@ export function createSubagentSessionDeps(overrides?: {
 			vi.fn((_provider: string | undefined): PromptInheritance => "full"),
 		listParentToolNames:
 			overrides?.listParentToolNames ?? vi.fn((): readonly string[] => []),
+		// A continued child's type is still defined, as the default agent config.
+		currentAgentConfig:
+			overrides?.currentAgentConfig ?? vi.fn((_type: string): AgentConfig | undefined => DEFAULT_AGENT_CONFIG),
 	};
 }
 
@@ -118,6 +134,81 @@ export function createChildLifecycleMock() {
 		bound: vi.fn<ChildLifecyclePublisher["bound"]>(),
 		completed: vi.fn<ChildLifecyclePublisher["completed"]>(),
 		disposed: vi.fn<ChildLifecyclePublisher["disposed"]>(),
+	};
+}
+
+/**
+ * The settled child a factory test continues: its transcript and the identity
+ * it was recorded under, which `createReopenedSessionManager()` reopens by default.
+ */
+export const EARLIER_TRANSCRIPT: ContinuedTranscript = {
+	file: "/sessions/tasks/earlier-child.jsonl",
+	header: { id: "earlier-child-session-id", cwd: "/work/earlier", parentSession: "parent-id" },
+	leafId: "earlier-reply",
+	// DEFAULT_AGENT_CONFIG, which the default currentAgentConfig answers with, names no file.
+	agentDefinition: "builtin",
+};
+
+/** The model EARLIER_TRANSCRIPT's child last replied on; `EARLIER_SNAPSHOT`'s registry knows it. */
+export const EARLIER_MODEL = makeModel({ provider: "recorded-provider", id: "recorded-model" });
+
+/** A parent snapshot whose model registry still knows EARLIER_MODEL, so the child can be continued on it. */
+export const EARLIER_SNAPSHOT: ParentSnapshot = {
+	...STUB_SNAPSHOT,
+	modelRegistry: {
+		find: (provider: string, modelId: string) =>
+			provider === EARLIER_MODEL.provider && modelId === EARLIER_MODEL.id ? EARLIER_MODEL : undefined,
+		getAll: () => [EARLIER_MODEL],
+	},
+};
+
+/** A raw transcript entry as a reopened session manager stub holds it. */
+export type ReopenedEntry = TranscriptEntryLike & BranchEntryLike;
+
+/**
+ * Entries chained in the order given, each the parent of the next and the
+ * first a root: an intact linear transcript. Ids default to `entry-<index>`.
+ */
+export function chainEntries(entries: readonly (Omit<ReopenedEntry, "id" | "parentId"> & { id?: string })[]): ReopenedEntry[] {
+	const chained: ReopenedEntry[] = [];
+	for (const [index, entry] of entries.entries()) {
+		chained.push({ ...entry, id: entry.id ?? `entry-${index}`, parentId: chained.at(-1)?.id ?? null });
+	}
+	return chained;
+}
+
+/**
+ * EARLIER_TRANSCRIPT's entries: the child's prompt, then its reply on
+ * EARLIER_MODEL, the entry its last run left last.
+ */
+const EARLIER_ENTRIES = chainEntries([
+	{ type: "message", id: "earlier-prompt", message: { role: "user" } },
+	{
+		type: "message",
+		id: EARLIER_TRANSCRIPT.leafId,
+		message: { role: "assistant", provider: EARLIER_MODEL.provider, model: EARLIER_MODEL.id, api: "openai-responses" },
+	},
+]);
+
+/**
+ * A session manager reopened on EARLIER_TRANSCRIPT: the identity it was
+ * recorded under, and `entries` (by default its prompt and its reply, which
+ * selects EARLIER_MODEL), continued from the last of them. The branch stub
+ * returns the entries as they are, standing in for Pi's walk of an intact
+ * linear chain. Each method is a typed stub, so a test can arm or inspect it
+ * and the whole stays checked against ReopenedSessionManagerLike where it is
+ * used.
+ */
+export function createReopenedSessionManager(entries: readonly ReopenedEntry[] = EARLIER_ENTRIES) {
+	const { header } = EARLIER_TRANSCRIPT;
+	return {
+		newSession: vi.fn<ReopenedSessionManagerLike["newSession"]>(),
+		getSessionFile: vi.fn((): string | undefined => EARLIER_TRANSCRIPT.file),
+		getSessionId: vi.fn((): string => header.id),
+		getHeader: vi.fn((): ReturnType<ReopenedSessionManagerLike["getHeader"]> => ({ ...header })),
+		getEntries: vi.fn((): readonly ReopenedEntry[] => entries),
+		getLeafId: vi.fn((): string | null => entries.at(-1)?.id ?? null),
+		getBranch: vi.fn((): readonly ReopenedEntry[] => entries),
 	};
 }
 

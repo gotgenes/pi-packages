@@ -23,6 +23,7 @@ import type {
 export class WorkspaceBracket {
 	private prepared?: Workspace;
 	private disposedWorkspace = false;
+	private providedWorkspace = false;
 
 	constructor(private readonly resolveProvider: () => WorkspaceProvider | undefined) {}
 
@@ -33,6 +34,16 @@ export class WorkspaceBracket {
 	 */
 	wasDisposed(): boolean {
 		return this.disposedWorkspace;
+	}
+
+	/**
+	 * True once the provider has handed back a workspace, whether or not it has
+	 * since been torn down: the child ran where the provider put it, which may be
+	 * the parent's own directory, bracketed by the provider's setup and teardown.
+	 * False when no provider was registered or the provider declined.
+	 */
+	hadWorkspace(): boolean {
+		return this.providedWorkspace;
 	}
 
 	/**
@@ -53,6 +64,7 @@ export class WorkspaceBracket {
 		const provider = this.resolveProvider();
 		if (!provider) return undefined;
 		this.prepared = await provider.prepare(ctx);
+		if (this.prepared) this.providedWorkspace = true;
 		return this.prepared?.cwd;
 	}
 

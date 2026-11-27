@@ -148,6 +148,9 @@ describe("SubagentEventsObserver", () => {
 					stoppedWhileQueued: false,
 					outputFile: undefined,
 					toolUses: 3,
+					lifetimeUsage: { input: 500, output: 500, cacheWrite: 0 },
+					compactionCount: 0,
+					providerWorkspace: false,
 				});
 			});
 		});
@@ -208,6 +211,9 @@ describe("SubagentEventsObserver", () => {
 					stoppedWhileQueued: false,
 					outputFile: undefined,
 					toolUses: 3,
+					lifetimeUsage: { input: 500, output: 500, cacheWrite: 0 },
+					compactionCount: 0,
+					providerWorkspace: false,
 				});
 			});
 		});
@@ -271,6 +277,9 @@ describe("SubagentEventsObserver", () => {
 					stoppedWhileQueued: false,
 					outputFile: undefined,
 					toolUses: 3,
+					lifetimeUsage: { input: 500, output: 500, cacheWrite: 0 },
+					compactionCount: 0,
+					providerWorkspace: false,
 				});
 			});
 		});

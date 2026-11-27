@@ -1,14 +1,16 @@
 import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
-import type { LifecycleManager, LifecycleRuntime } from "#src/handlers/lifecycle";
+import type { LifecycleManager, LifecycleRuntime, StoppedRun } from "#src/handlers/lifecycle";
 import { SessionLifecycleHandler } from "#src/handlers/lifecycle";
-import { buildShutdownNotice, type ShutdownNotice, type StoppedAgent } from "#src/handlers/shutdown-notice";
+import { buildShutdownNotice, type ShutdownNotice } from "#src/handlers/shutdown-notice";
 
-const stoppedAgent: StoppedAgent = {
+const stoppedAgent: StoppedRun = {
   id: "a1b2c3",
   type: "general-purpose",
   description: "Refactor auth module",
   stoppedWhileQueued: false,
   outputFile: "/sessions/parent/tasks/a1b2c3.jsonl",
+  restorable: false,
+  promise: Promise.resolve(),
 };
 
 describe("SessionLifecycleHandler", () => {
@@ -28,7 +30,7 @@ describe("SessionLifecycleHandler", () => {
     mockSetSessionContext = vi.fn();
     mockClearSessionContext = vi.fn();
     mockClearCompleted = vi.fn(() => Promise.resolve());
-    mockAbortAll = vi.fn((): StoppedAgent[] => []);
+    mockAbortAll = vi.fn((): StoppedRun[] => []);
     mockDispose = vi.fn(() => Promise.resolve());
     mockDisposeNotifications = vi.fn();
     mockUnpublishService = vi.fn();
@@ -179,6 +181,24 @@ describe("SessionLifecycleHandler", () => {
       expect(settled).toBe(true);
     });
 
+    it("disposes the children only once every stopped run has ended", async () => {
+      const ended = Promise.withResolvers<void>(); // eslint-disable-line @typescript-eslint/no-invalid-void-type -- Promise.withResolvers<void> is valid; rule does not allow void in generic fn call type args
+      mockAbortAll.mockReturnValue([{ ...stoppedAgent, promise: ended.promise }]);
+
+      let settled = false;
+      const pending = handler.handleSessionShutdown({ reason: "reload" }).then(() => {
+        settled = true;
+      });
+      await Promise.resolve();
+      expect(mockDispose).not.toHaveBeenCalled();
+      expect(settled).toBe(false);
+
+      ended.resolve();
+      await pending;
+      expect(mockDispose).toHaveBeenCalledOnce();
+      expect(settled).toBe(true);
+    });
+
     describe("the shutdown notice", () => {
       it("tells the parent which agents the shutdown stopped, without starting a turn", async () => {
         mockAbortAll.mockReturnValue([stoppedAgent]);
@@ -188,6 +208,29 @@ describe("SessionLifecycleHandler", () => {
         expect(mockSendMessage).toHaveBeenCalledExactlyOnceWith(buildShutdownNotice("reload", [stoppedAgent]), {
           triggerTurn: false,
         });
+      });
+
+      it("is left once every stopped run has ended, so it reads whether each can be resumed from the run it recorded", async () => {
+        const ended = Promise.withResolvers<void>(); // eslint-disable-line @typescript-eslint/no-invalid-void-type -- Promise.withResolvers<void> is valid; rule does not allow void in generic fn call type args
+        let recorded = false;
+        // A running agent's run records itself as it ends, and only then reads restorable.
+        const run: StoppedRun = {
+          ...stoppedAgent,
+          get restorable() { return recorded; },
+          promise: ended.promise.then(() => { recorded = true; }),
+        };
+        mockAbortAll.mockReturnValue([run]);
+
+        const pending = handler.handleSessionShutdown({ reason: "reload" });
+        await Promise.resolve();
+        expect(mockSendMessage).not.toHaveBeenCalled();
+
+        ended.resolve();
+        await pending;
+        expect(mockSendMessage).toHaveBeenCalledExactlyOnceWith(
+          buildShutdownNotice("reload", [{ ...stoppedAgent, restorable: true }]),
+          { triggerTurn: false },
+        );
       });
 
       it("sends nothing when the shutdown stopped nothing", async () => {

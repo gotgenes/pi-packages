@@ -12,6 +12,7 @@
  * createSession), so threading the provider through here would be a relay smell.
  */
 
+import { dirname } from "node:path";
 import type { Model } from "@earendil-works/pi-ai";
 import {
   type AgentSession,
@@ -19,7 +20,7 @@ import {
   type SettingsManager,
   type ToolDefinition,
 } from "@earendil-works/pi-coding-agent";
-import type { AgentConfigLookup } from "#src/config/agent-types";
+import { type AgentConfigLookup, capabilityToolNames, definitionOf } from "#src/config/agent-types";
 import { debugNote } from "#src/debug";
 import type { ChildLifecyclePublisher } from "#src/lifecycle/child-lifecycle";
 import type { ParentSnapshot } from "#src/lifecycle/parent-snapshot";
@@ -31,8 +32,12 @@ import type { EnvInfo } from "#src/session/env";
 import { expandMcpToolPatterns } from "#src/session/mcp-tool-patterns";
 import type { ModelRegistry } from "#src/session/model-resolver";
 import { NotifyParentTool, type UpdateAnnouncer } from "#src/session/notify-parent-tool";
+import { type BranchEntryLike, branchModelSelection, latestModelChange } from "#src/session/recorded-model";
 import { type AssemblerIO, assembleSessionConfig } from "#src/session/session-config";
+import { holdsConversation, rootedBranch, type TranscriptEntryLike } from "#src/session/transcript-branch";
+import type { ChildTranscriptHeader } from "#src/session/transcript-header";
 import type {
+  AgentConfig,
   ParentSessionInfo,
   PromptInheritance,
   ShellExec,
@@ -61,6 +66,38 @@ export interface SessionManagerLike {
   newSession(opts: { parentSession?: string }): void;
   getSessionFile(): string | undefined;
   getSessionId(): string;
+}
+
+/**
+ * A session manager reopened on an existing child transcript. It also answers
+ * whose session it holds, which entries it holds and where it would continue,
+ * and which model its branch selects, so the factory can check it continues
+ * the child it was asked to before anything runs on it.
+ */
+export interface ReopenedSessionManagerLike extends SessionManagerLike {
+  getHeader(): { id: string; cwd: string; parentSession?: string } | null;
+  /** Every entry the file holds, in file order, as read: no ancestry is walked. */
+  getEntries(): readonly TranscriptEntryLike[];
+  /** The entry Pi continues from. */
+  getLeafId(): string | null;
+  getBranch(): readonly BranchEntryLike[];
+}
+
+/**
+ * A settled child's transcript to continue: the identity it was recorded under
+ * (the session id its runs recorded, checked against its header when the
+ * resume was accepted) and the last entry its last run left in it. The factory
+ * refuses to continue a file that no longer carries that identity, no longer
+ * holds that entry, or holds no conversation: Pi opens a missing path as a new,
+ * empty session, and a file replaced or cut short since would run the resume
+ * on someone else's conversation, or on part of the child's own.
+ */
+export interface ContinuedTranscript {
+  file: string;
+  header: ChildTranscriptHeader;
+  leafId: string;
+  /** The definition of its agent type the child ran under (`definitionOf`); no other may continue it. */
+  agentDefinition: string;
 }
 
 /** Options passed to EnvironmentIO/SessionFactoryIO methods. */
@@ -122,6 +159,15 @@ export interface EnvironmentIO {
 export interface SessionFactoryIO {
   createResourceLoader: (opts: ResourceLoaderOptions) => ResourceLoaderLike;
   createSessionManager: (cwd: string, sessionDir: string) => SessionManagerLike;
+  /** Reopen an existing child transcript, whose header already records its cwd and parent. */
+  openSessionManager: (transcript: string) => ReopenedSessionManagerLike;
+  /**
+   * Read, without writing, the identity a transcript's header records; undefined
+   * when the file is missing, empty, or does not start with a usable header.
+   * Consulted before `openSessionManager`, because Pi writes to some files as it
+   * opens them.
+   */
+  readTranscriptHeader: (transcript: string) => ChildTranscriptHeader | undefined;
   createSettingsManager: (cwd: string, agentDir: string) => SettingsManager;
   /**
    * Settings view the child's resource loader resolves packages from.
@@ -164,6 +210,13 @@ export interface SubagentSessionDeps {
    * created. An agent's `mcp__<server>__*` tool patterns expand against them.
    */
   listParentToolNames: () => readonly string[];
+  /**
+   * The definition a continued child runs under: the agent type's config read
+   * afresh from its source, or undefined when the type is no longer defined or
+   * is disabled. Never a fallback, so a child is not restored with capabilities
+   * its own type never granted.
+   */
+  currentAgentConfig: (type: SubagentType) => AgentConfig | undefined;
 }
 
 /** Per-spawn parameters — the fields that vary per child session. */
@@ -189,6 +242,13 @@ export interface CreateSubagentSessionParams {
   notifyParent?: UpdateAnnouncer;
   /** The caller's turn-limit inputs, resolved with the agent's own limit into the session's. */
   turnLimits?: TurnLimitRequest;
+  /**
+   * An earlier child transcript to continue instead of starting a new one: the
+   * child an earlier manager ran, before a `/reload` or a restart. The session
+   * is reopened on it, runs in the directory it recorded, keeps the model and
+   * thinking level it selected, and its first run here is a resume.
+   */
+  transcript?: ContinuedTranscript;
 }
 
 /**
@@ -218,11 +278,21 @@ export async function createSubagentSession(
   const parentSessionId = params.parentSession?.parentSessionId;
   deps.lifecycle.spawning({ agentName: type, parentSessionId });
 
+  // A continued transcript is opened, and checked, before anything else: the
+  // model its branch selects decides the child's model, and with it the prompt
+  // strategy, and nothing may run on a file that no longer holds this child.
+  const reopened = params.transcript && reopenTranscript(deps.io, params.transcript);
+
   // Resolve working directory upfront - needed for detectEnv before assembly.
-  const effectiveCwd = params.cwd ?? snapshot.cwd;
+  // A continued child runs where its transcript says it ran, as it would had
+  // its session stayed live.
+  const cwd = params.cwd ?? params.transcript?.header.cwd;
+  const effectiveCwd = cwd ?? snapshot.cwd;
   const env = await deps.io.detectEnv(deps.exec, effectiveCwd);
 
-  // Assemble session configuration (synchronous, no SDK objects).
+  // Assemble session configuration (synchronous, no SDK objects). A continued
+  // child's definition is read here, after the last await before assembly, so
+  // the definition checked is the one assembled.
   const cfg = assembleSessionConfig(
     type,
     {
@@ -234,12 +304,12 @@ export async function createSubagentSession(
       resolvePromptInheritance: deps.resolvePromptInheritance,
     },
     {
-      cwd: params.cwd,
-      model: params.model,
+      cwd,
+      model: params.model ?? (reopened && recordedModel(reopened, snapshot.modelRegistry)),
       thinkingLevel: params.thinkingLevel,
     },
     env,
-    deps.registry,
+    params.transcript ? continuedAgentLookup(deps, type, params.transcript.agentDefinition) : deps.registry,
     deps.io.assemblerIO,
   );
 
@@ -280,9 +350,17 @@ export async function createSubagentSession(
   // Create a persisted SessionManager so transcripts are written in Pi's
   // official JSONL format. Falls back to a temp directory when the parent
   // session is not persisted (e.g. headless/API mode).
-  const sessionDir = deps.io.deriveSessionDir(params.parentSession?.parentSessionFile, cfg.effectiveCwd);
-  const sessionManager = deps.io.createSessionManager(cfg.effectiveCwd, sessionDir);
-  sessionManager.newSession({ parentSession: params.parentSession?.parentSessionId });
+  // A continued transcript stays where it is, beside its siblings.
+  const sessionDir = params.transcript === undefined
+    ? deps.io.deriveSessionDir(params.parentSession?.parentSessionFile, cfg.effectiveCwd)
+    : dirname(params.transcript.file);
+  let sessionManager: SessionManagerLike;
+  if (reopened) {
+    sessionManager = reopened;
+  } else {
+    sessionManager = deps.io.createSessionManager(cfg.effectiveCwd, sessionDir);
+    sessionManager.newSession({ parentSession: params.parentSession?.parentSessionId });
+  }
   const sessionId = sessionManager.getSessionId();
 
   const childTools = buildChildTools(params);
@@ -297,7 +375,9 @@ export async function createSubagentSession(
     customTools: childTools,
     excludeTools: EXCLUDED_TOOL_NAMES,
     resourceLoader: loader,
-    thinkingLevel: cfg.thinkingLevel,
+    // Left unset for a continued transcript unless the caller chose one, so Pi
+    // restores the level the child last ran at.
+    thinkingLevel: reopened ? params.thinkingLevel : cfg.thinkingLevel,
   });
 
   const subagentSession = new SubagentSession(session, {
@@ -305,8 +385,10 @@ export async function createSubagentSession(
     sessionId,
     sessionDir,
     agentName: type,
+    agentDefinition: cfg.agentDefinition,
     turnLimits: resolveTurnLimits(params.turnLimits, cfg.agentMaxTurns),
     parentContext: snapshot.parentContext,
+    continued: reopened !== undefined,
     lifecycle: deps.lifecycle,
   });
 
@@ -334,4 +416,85 @@ export async function createSubagentSession(
   deps.lifecycle.bound({ sessionId, parentSessionId });
 
   return subagentSession;
+}
+
+/**
+ * Reopen a settled child's transcript, refusing one that no longer holds the
+ * child the resume was accepted for. Throws before any SDK session exists, so
+ * a refused transcript gets no turn and no entry.
+ *
+ * The file is checked twice. First read-only, right before it is opened: Pi
+ * initialises an empty file it opens with a new header, and rewrites a session
+ * in an older format as it loads it, so a file that is not this child's must
+ * never reach the open. Then the session manager actually opened is checked,
+ * since that, not the file read a moment earlier, is what the child continues.
+ * Nothing awaits between the two, so nothing in this process can change the
+ * file in between; another process writing to it at that instant is not
+ * supported.
+ */
+function reopenTranscript(io: SessionFactoryIO, transcript: ContinuedTranscript): ReopenedSessionManagerLike {
+  if (!holdsChild(io.readTranscriptHeader(transcript.file), transcript.header)) {
+    throw notThisChild(transcript);
+  }
+  const reopened = io.openSessionManager(transcript.file);
+  if (!holdsChild(reopened.getHeader() ?? undefined, transcript.header)) throw notThisChild(transcript);
+  const branch = rootedBranch(reopened.getEntries(), reopened.getLeafId());
+  if (!branch?.some((entry) => entry.id === transcript.leafId)) {
+    throw new Error(`Transcript ${transcript.file} no longer holds the conversation its last run left; it was not restored.`);
+  }
+  if (!holdsConversation(branch)) {
+    throw new Error(`Transcript ${transcript.file} holds no conversation to continue; it was not restored.`);
+  }
+  return reopened;
+}
+
+/**
+ * The agent definition a continued child is assembled under, read afresh and
+ * pinned, so assembly cannot fall back to another type's. The transcript is
+ * refused when its type is no longer defined, is disabled, or is now supplied
+ * by another definition than the one the child ran under: deleting a project
+ * file can uncover a global or built-in one of the same name, with other tools.
+ */
+function continuedAgentLookup(deps: SubagentSessionDeps, type: SubagentType, definition: string): AgentConfigLookup {
+  const config = deps.currentAgentConfig(type);
+  if (!config || definitionOf(config) !== definition) {
+    throw new Error(
+      `Agent type "${type}" is no longer defined as the child ran under it, or is disabled; the child was not restored.`,
+    );
+  }
+  return { resolveAgentConfig: () => config, getToolNamesForType: () => capabilityToolNames(config) };
+}
+
+/** Whether a transcript header names the child session recorded when its resume was accepted. */
+function holdsChild(
+  header: { id: string; cwd: string; parentSession?: string } | undefined,
+  expected: ChildTranscriptHeader,
+): boolean {
+  return header?.id === expected.id && header.parentSession === expected.parentSession && header.cwd === expected.cwd;
+}
+
+function notThisChild(transcript: ContinuedTranscript): Error {
+  return new Error(`Transcript ${transcript.file} no longer holds this child's session; it was not restored.`);
+}
+
+/**
+ * The model a reopened transcript's branch selects. The transcript is refused
+ * when it selects none, or one the parent's registry no longer knows, and when
+ * the route its latest `model_change` chose is gone: that may have been a
+ * virtual model, which Pi would then pass over for the physical model that
+ * answered under it. Any other model would receive a conversation the child
+ * had on its own, on a route nobody chose for it.
+ */
+function recordedModel(sessionManager: ReopenedSessionManagerLike, registry: ModelRegistry): Model<any> {
+  const branch = sessionManager.getBranch();
+  const selected = branchModelSelection(branch, registry);
+  const model = selected && registry.find(selected.provider, selected.modelId);
+  const route = latestModelChange(branch);
+  const goneRoute = route && !registry.find(route.provider, route.modelId) ? route : undefined;
+  if (!model || goneRoute) {
+    const missing = goneRoute ?? selected;
+    const named = missing ? `"${missing.provider}/${missing.modelId}"` : "no model";
+    throw new Error(`The child's transcript selects ${named}, which is not available; the child was not restored.`);
+  }
+  return model;
 }

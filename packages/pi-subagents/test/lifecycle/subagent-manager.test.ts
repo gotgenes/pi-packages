@@ -2,12 +2,19 @@ import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from "vite
 import { AgentTypeRegistry } from "#src/config/agent-types";
 import { ConcurrencyLimiter } from "#src/lifecycle/concurrency-limiter";
 import type { CreateSubagentSessionParams } from "#src/lifecycle/create-subagent-session";
-import type { AgentSpawnConfig } from "#src/lifecycle/subagent-manager";
+import type { AgentSpawnConfig, ChildHistory } from "#src/lifecycle/subagent-manager";
 import { resolveRetentionWindow, SubagentManager, type SubagentManagerObserver } from "#src/lifecycle/subagent-manager";
 import type { RunKind } from "#src/lifecycle/subagent-run";
 import type { SubagentSession, TurnLoopResult } from "#src/lifecycle/subagent-session";
+import { resolveTurnLimits } from "#src/lifecycle/turn-limits";
 import type { WorkspaceProvider } from "#src/lifecycle/workspace";
 import { NotificationManager } from "#src/observation/notification";
+import {
+  type PersistedSubagentRecord,
+  type SessionEntryLike,
+  SUBAGENT_RECORD_ENTRY,
+  toPersistedRecord,
+} from "#src/persisted-record";
 import type { RunConfig } from "#src/runtime";
 import { GetResultTool } from "#src/tools/get-result-tool";
 import type { AgentConfig, Subagent } from "#src/types";
@@ -47,6 +54,7 @@ function createManager(overrides?: {
   getRetentionPolicy?: () => { consumedSessionRetentionMinutes: number; unconsumedSessionRetentionMinutes: number };
   baseCwd?: string;
   registry?: AgentTypeRegistry;
+  history?: ChildHistory;
 }) {
   const createSubagentSession: SessionFactory = overrides?.createSubagentSession ?? defaultFactory();
   const observer: SubagentManagerObserver | undefined = overrides?.observer
@@ -67,6 +75,7 @@ function createManager(overrides?: {
     getRunConfig: overrides?.getRunConfig,
     getRetentionPolicy: overrides?.getRetentionPolicy,
     registry: overrides?.registry ?? defaultRegistry(),
+    history: overrides?.history,
   });
   return { manager: mgr, createSubagentSession, limiter };
 }
@@ -140,6 +149,75 @@ function seedForegroundNotificationScenario() {
   notifications.onParentAgentStart();
   const pending = spawnFg(manager);
   return { manager, notifications, sendMessage, pending, openGate };
+}
+
+const EARLIER_TRANSCRIPT = "/sessions/parent/tasks/earlier-child.jsonl";
+/** What the earlier child's transcript header records: its session, its parent, and the parent's directory. */
+const EARLIER_HEADER = { id: "earlier-child-session", cwd: STUB_SNAPSHOT.cwd, parentSession: "parent-id" };
+/** What a restored record continues: the transcript, the header that identifies it, and the entry its last run left. */
+const EARLIER_CONTINUATION = {
+  file: EARLIER_TRANSCRIPT,
+  header: EARLIER_HEADER,
+  leafId: "earlier-last-entry",
+  // Every definition these tests register is built in or built in memory, so names no file.
+  agentDefinition: "builtin",
+};
+
+/** The `subagents:record` entry an earlier manager appended when its child settled. */
+function recordEntry(overrides: Partial<PersistedSubagentRecord> = {}) {
+  const data: PersistedSubagentRecord = {
+    id: "earlier-1",
+    type: "Explore",
+    description: "Map the configs",
+    status: "completed",
+    result: "Mapped them.",
+    error: undefined,
+    turnBudget: undefined,
+    startedAt: 1000,
+    completedAt: 2000,
+    stoppedWhileQueued: false,
+    outputFile: EARLIER_TRANSCRIPT,
+    toolUses: 4,
+    lifetimeUsage: { input: 300, output: 120, cacheWrite: 10 },
+    compactionCount: 1,
+    sessionId: EARLIER_HEADER.id,
+    transcriptLeafId: EARLIER_CONTINUATION.leafId,
+    agentDefinition: EARLIER_CONTINUATION.agentDefinition,
+    providerWorkspace: false,
+    ...overrides,
+  };
+  return { type: "custom", customType: SUBAGENT_RECORD_ENTRY, data };
+}
+
+/** The entry a manager wrote before runs recorded what identifies their transcript. */
+function preIdentityRecordEntry() {
+  const {
+    sessionId: _sessionId,
+    transcriptLeafId: _transcriptLeafId,
+    agentDefinition: _agentDefinition,
+    providerWorkspace: _providerWorkspace,
+    lifetimeUsage: _lifetimeUsage,
+    compactionCount: _compactionCount,
+    ...data
+  } = recordEntry().data;
+  return { type: "custom", customType: SUBAGENT_RECORD_ENTRY, data };
+}
+
+/**
+ * A parent session that recorded one settled child, whose transcript records
+ * the parent's own directory unless a test says otherwise.
+ */
+function historyWith(
+  entries: readonly SessionEntryLike[] = [recordEntry()],
+  overrides: Partial<ChildHistory> = {},
+): ChildHistory {
+  return {
+    entries: () => entries,
+    snapshot: () => STUB_SNAPSHOT,
+    parentSession: () => ({ parentSessionFile: "/sessions/parent.jsonl", parentSessionId: "parent-id" }),
+    transcriptHeader: () => EARLIER_HEADER,
+    ...overrides,
+  };
 }
 
 describe("SubagentManager", () => {
@@ -1940,6 +2018,524 @@ describe("SubagentManager", () => {
         await manager.resume(record.id, "continue", { background: false, claimOutcome: true });
 
         expect(sendMessage).not.toHaveBeenCalled();
+      });
+    });
+  });
+
+  describe("resuming a settled child an earlier manager ran", () => {
+    let manager: SubagentManager;
+
+    afterEach(async () => {
+      await manager.dispose();
+    });
+
+    describe("restored", () => {
+      it("resumes it under its original id", async () => {
+        ({ manager } = createManager({ history: historyWith() }));
+
+        const outcome = await manager.resume("earlier-1", "continue", { background: false });
+
+        expect(outcome).toEqual({ kind: "resumed", record: manager.getRecord("earlier-1") });
+      });
+
+      it("continues the child's own transcript as the agent it was", async () => {
+        const { factory } = createSessionFactory();
+        ({ manager } = createManager({ createSubagentSession: factory, history: historyWith() }));
+
+        await manager.resume("earlier-1", "continue", { background: false });
+
+        expect(factory).toHaveBeenCalledExactlyOnceWith(
+          expect.objectContaining({
+            type: "Explore",
+            snapshot: STUB_SNAPSHOT,
+            transcript: EARLIER_CONTINUATION,
+            parentSession: { parentSessionFile: "/sessions/parent.jsonl", parentSessionId: "parent-id" },
+          }),
+        );
+      });
+
+      it("returns the resumed run's outcome on the restored record", async () => {
+        const { factory, stub } = createSessionFactory();
+        stub.runTurnLoop.mockResolvedValue(turnLoopResult({ responseText: "Picked up where I left off." }));
+        ({ manager } = createManager({ createSubagentSession: factory, history: historyWith() }));
+
+        await manager.resume("earlier-1", "continue", { background: false });
+
+        const record = manager.getRecord("earlier-1")!;
+        expect(record.description).toBe("Map the configs");
+        expect(record.status).toBe("completed");
+        expect(record.result).toBe("Picked up where I left off.");
+      });
+
+      it("keeps the tool count the earlier runs reached", async () => {
+        ({ manager } = createManager({ history: historyWith() }));
+
+        await manager.resume("earlier-1", "continue", { background: false });
+
+        expect(manager.getRecord("earlier-1")!.toolUses).toBe(4);
+      });
+
+      it("adds the resumed run's usage and compactions to those the earlier runs reached", async () => {
+        const { factory, stub, session } = createSessionFactory();
+        stub.runTurnLoop.mockImplementation(async () => {
+          emitResumeUsageAndCompaction(session);
+          return turnLoopResult({ responseText: "second" });
+        });
+        ({ manager } = createManager({ createSubagentSession: factory, history: historyWith() }));
+
+        await manager.resume("earlier-1", "continue", { background: false });
+
+        const record = manager.getRecord("earlier-1")!;
+        expect(record.lifetimeUsage).toEqual({ input: 370, output: 150, cacheWrite: 15 });
+        expect(record.compactionCount).toBe(2);
+      });
+
+      it("restores from the last run recorded under the id", async () => {
+        const { factory } = createSessionFactory();
+        ({ manager } = createManager({
+          createSubagentSession: factory,
+          history: historyWith([
+            recordEntry({ outputFile: "/sessions/parent/tasks/stale.jsonl" }),
+            recordEntry({ status: "error", error: "boom" }),
+          ]),
+        }));
+
+        await manager.resume("earlier-1", "continue", { background: false });
+
+        expect(factory).toHaveBeenCalledWith(
+          expect.objectContaining({ transcript: EARLIER_CONTINUATION }),
+        );
+      });
+
+      it("reports the resume to the manager's observer as one", async () => {
+        const kinds: RunKind[] = [];
+        ({ manager } = createManager({
+          history: historyWith(),
+          observer: { onSubagentRunStarted: (_record, kind) => kinds.push(kind), onSubagentRunFinished: (_record, run) => kinds.push(run.kind) },
+        }));
+
+        await manager.resume("earlier-1", "continue", { background: false });
+
+        expect(kinds).toEqual(["resume", "resume"]);
+      });
+
+      it("runs a background resume of it through the concurrency limit", async () => {
+        const blocking = createBlockingFactory();
+        ({ manager } = createManager({ createSubagentSession: blocking, getMaxConcurrent: () => 1, history: historyWith() }));
+        spawnBg(manager, "occupies the only slot");
+
+        const start = manager.startResume("earlier-1", "continue", { background: true });
+
+        expect(start.kind).toBe("started");
+        expect(manager.getRecord("earlier-1")!.status).toBe("queued");
+      });
+
+      it("reopens the transcript once, then resumes the live session", async () => {
+        const { factory } = createSessionFactory();
+        ({ manager } = createManager({ createSubagentSession: factory, history: historyWith() }));
+
+        await manager.resume("earlier-1", "continue", { background: false });
+        await manager.resume("earlier-1", "and then", { background: false });
+
+        expect(factory).toHaveBeenCalledOnce();
+      });
+
+      it("leaves a record this manager holds to answer for its id", async () => {
+        const { factory } = createSessionFactory();
+        const entries: ReturnType<typeof recordEntry>[] = [];
+        ({ manager } = createManager({ createSubagentSession: factory, history: historyWith(entries) }));
+        const id = spawnBg(manager);
+        await manager.getRecord(id)!.promise;
+        entries.push(recordEntry({ id }));
+
+        await manager.resume(id, "continue", { background: true });
+
+        // The initial run's session alone: the resume continued it live.
+        expect(factory).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ transcript: undefined }));
+      });
+    });
+
+    describe("refused", () => {
+      it("reports an id the parent session recorded no run for", async () => {
+        ({ manager } = createManager({ history: historyWith() }));
+
+        expect(await manager.resume("someone-else", "continue", { background: false })).toEqual({
+          kind: "refused",
+          reason: "unknown-agent",
+        });
+      });
+
+      it("reports an id outside a parent session", async () => {
+        ({ manager } = createManager({ history: historyWith(undefined, { snapshot: () => undefined }) }));
+
+        expect(await manager.resume("earlier-1", "continue", { background: false })).toEqual({
+          kind: "refused",
+          reason: "unknown-agent",
+        });
+      });
+
+      it("reports a run that never got a transcript", async () => {
+        ({ manager } = createManager({ history: historyWith([recordEntry({ outputFile: undefined })]) }));
+
+        expect(await manager.resume("earlier-1", "continue", { background: false })).toEqual({
+          kind: "refused",
+          reason: "no-session",
+        });
+      });
+
+      it("reports a transcript that can no longer be read", async () => {
+        ({ manager } = createManager({ history: historyWith(undefined, { transcriptHeader: () => undefined }) }));
+
+        expect(await manager.resume("earlier-1", "continue", { background: false })).toEqual({
+          kind: "refused",
+          reason: "no-session",
+        });
+      });
+
+      it("reports a child that ran in a provider's workspace, which went with the manager that held it", async () => {
+        ({ manager } = createManager({ history: historyWith([recordEntry({ providerWorkspace: true })]) }));
+
+        expect(await manager.resume("earlier-1", "continue", { background: false })).toEqual({
+          kind: "refused",
+          reason: "workspace-disposed",
+        });
+      });
+
+      describe("a transcript nothing shows is still the child's", () => {
+        it("refuses another session of the same parent put at the recorded path, opening nothing", async () => {
+          const { factory } = createSessionFactory();
+          ({ manager } = createManager({
+            createSubagentSession: factory,
+            history: historyWith(undefined, { transcriptHeader: () => ({ ...EARLIER_HEADER, id: "sibling-session" }) }),
+          }));
+
+          expect(await manager.resume("earlier-1", "continue", { background: false })).toEqual({
+            kind: "refused",
+            reason: "no-session",
+          });
+          expect(manager.getRecord("earlier-1")).toBeUndefined();
+          expect(factory).not.toHaveBeenCalled();
+        });
+
+        it("refuses a child recorded before runs recorded their transcript's identity, though it ran in the parent's directory", async () => {
+          const { factory } = createSessionFactory();
+          ({ manager } = createManager({ createSubagentSession: factory, history: historyWith([preIdentityRecordEntry()]) }));
+
+          expect(await manager.resume("earlier-1", "continue", { background: false })).toEqual({
+            kind: "refused",
+            reason: "no-session",
+          });
+          expect(factory).not.toHaveBeenCalled();
+        });
+
+        it("answers a fork unknown-agent for an inherited child recorded before that, as for any child it does not own", async () => {
+          ({ manager } = createManager({
+            history: historyWith([preIdentityRecordEntry()], {
+              transcriptHeader: () => ({ ...EARLIER_HEADER, parentSession: "original-parent" }),
+            }),
+          }));
+
+          expect(await manager.resume("earlier-1", "continue", { background: false })).toEqual({
+            kind: "refused",
+            reason: "unknown-agent",
+          });
+        });
+      });
+
+      it("registers no record and opens no session for a refused restore", async () => {
+        const { factory } = createSessionFactory();
+        ({ manager } = createManager({
+          createSubagentSession: factory,
+          history: historyWith([recordEntry({ providerWorkspace: true })]),
+        }));
+
+        await manager.resume("earlier-1", "continue", { background: false });
+
+        expect(manager.getRecord("earlier-1")).toBeUndefined();
+        expect(factory).not.toHaveBeenCalled();
+      });
+    });
+
+    describe("its agent type", () => {
+      it("refuses a child whose agent type is no longer defined, opening nothing", async () => {
+        const { factory } = createSessionFactory();
+        ({ manager } = createManager({ createSubagentSession: factory, history: historyWith([recordEntry({ type: "Retired" })]) }));
+
+        expect(await manager.resume("earlier-1", "continue", { background: false })).toEqual({
+          kind: "refused",
+          reason: "agent-type-unavailable",
+        });
+        expect(manager.getRecord("earlier-1")).toBeUndefined();
+        expect(factory).not.toHaveBeenCalled();
+      });
+
+      it("refuses a child whose agent type is disabled, opening nothing", async () => {
+        const { factory } = createSessionFactory();
+        ({ manager } = createManager({
+          createSubagentSession: factory,
+          registry: registryWith("Reviewer", { enabled: false, toolNames: ["read"] }),
+          history: historyWith([recordEntry({ type: "Reviewer" })]),
+        }));
+
+        expect(await manager.resume("earlier-1", "continue", { background: false })).toEqual({
+          kind: "refused",
+          reason: "agent-type-unavailable",
+        });
+        expect(factory).not.toHaveBeenCalled();
+      });
+
+      it("restores it under the type's canonical name", async () => {
+        const { factory } = createSessionFactory();
+        ({ manager } = createManager({ createSubagentSession: factory, history: historyWith([recordEntry({ type: "explore" })]) }));
+
+        await manager.resume("earlier-1", "continue", { background: false });
+
+        expect(factory).toHaveBeenCalledWith(expect.objectContaining({ type: "Explore" }));
+      });
+
+      it("answers a fork unknown-agent though the type is gone, as for any child it does not own", async () => {
+        ({ manager } = createManager({
+          history: historyWith([recordEntry({ type: "Retired" })], {
+            transcriptHeader: () => ({ ...EARLIER_HEADER, parentSession: "original-parent" }),
+          }),
+        }));
+
+        expect(await manager.resume("earlier-1", "continue", { background: false })).toEqual({
+          kind: "refused",
+          reason: "unknown-agent",
+        });
+      });
+
+      describe("now supplied by another definition than the one it ran under", () => {
+        const PROJECT_EXPLORE = "/project/.pi/agents/Explore.md";
+
+        /** A manager whose registry defines Explore as `definitions` say, over a child that ran under the project file. */
+        function managerWith(definitions: Map<string, AgentConfig>) {
+          const { factory } = createSessionFactory();
+          ({ manager } = createManager({
+            createSubagentSession: factory,
+            registry: new AgentTypeRegistry(() => definitions),
+            history: historyWith([recordEntry({ type: "Explore", agentDefinition: PROJECT_EXPLORE })]),
+          }));
+          return factory;
+        }
+
+        it.each([
+          ["the built-in, once the project file is deleted", new Map<string, AgentConfig>()],
+          [
+            "a global file, once the project file is deleted",
+            new Map([["Explore", makeAgentConfig({ name: "Explore", toolNames: ["read", "bash"], filePath: "/home/user/.pi/agent/agents/Explore.md" })]]),
+          ],
+        ])("refuses a child whose type is now %s, opening nothing", async (_label, definitions) => {
+          const factory = managerWith(definitions);
+
+          expect(await manager.resume("earlier-1", "continue", { background: false })).toEqual({
+            kind: "refused",
+            reason: "agent-type-unavailable",
+          });
+          expect(manager.getRecord("earlier-1")).toBeUndefined();
+          expect(factory).not.toHaveBeenCalled();
+        });
+
+        it("restores a child whose type is still read from the file it ran under", async () => {
+          const factory = managerWith(
+            new Map([["Explore", makeAgentConfig({ name: "Explore", toolNames: ["read"], filePath: PROJECT_EXPLORE })]]),
+          );
+
+          await manager.resume("earlier-1", "continue", { background: false });
+
+          expect(factory).toHaveBeenCalledWith(
+            expect.objectContaining({ transcript: expect.objectContaining({ agentDefinition: PROJECT_EXPLORE }) }),
+          );
+        });
+      });
+
+      it("re-reads the agent definitions before deciding, though nothing else reloaded them", async () => {
+        const agents = new Map([["Reviewer", makeAgentConfig({ name: "Reviewer", toolNames: ["read"] })]]);
+        const registry = new AgentTypeRegistry(() => agents);
+        const { factory } = createSessionFactory();
+        ({ manager } = createManager({
+          createSubagentSession: factory,
+          registry,
+          history: historyWith([recordEntry({ type: "Reviewer" })]),
+        }));
+        // Disabled at its source; no subagent tool call has reloaded the registry since.
+        agents.set("Reviewer", makeAgentConfig({ name: "Reviewer", toolNames: ["read"], enabled: false }));
+
+        expect(await manager.resume("earlier-1", "continue", { background: true })).toEqual({
+          kind: "refused",
+          reason: "agent-type-unavailable",
+        });
+        expect(factory).not.toHaveBeenCalled();
+      });
+    });
+
+    describe("its turn limit", () => {
+      // The agent's own ceiling, which a fresh spawn of the type would get.
+      const AGENT_MAX_TURNS = 10;
+
+      it.each([
+        ["keeps the ceiling its last run recorded", { maxTurns: 3, used: 3, phase: "exhausted" } as const, 3, 3],
+        ["keeps an unlimited run unlimited, over the agent's ceiling", { used: 12, phase: "within" } as const, 0, undefined],
+        ["gives a run that recorded no budget what a fresh spawn would get", undefined, undefined, AGENT_MAX_TURNS],
+      ])("%s", async (_label, turnBudget, requested, effective) => {
+        const { factory } = createSessionFactory();
+        ({ manager } = createManager({
+          createSubagentSession: factory,
+          registry: registryWith("Reviewer", { maxTurns: AGENT_MAX_TURNS, toolNames: ["read"] }),
+          getRunConfig: () => ({ defaultMaxTurns: 50, wrapUpTurns: 2 }) as RunConfig,
+          history: historyWith([recordEntry({ type: "Reviewer", turnBudget })]),
+        }));
+
+        await manager.resume("earlier-1", "continue", { background: false });
+
+        const [params] = factory.mock.calls[0];
+        expect(params.turnLimits).toEqual({ maxTurns: requested, defaultMaxTurns: 50, wrapUpTurns: 2 });
+        expect(resolveTurnLimits(params.turnLimits, AGENT_MAX_TURNS).maxTurns).toBe(effective);
+      });
+
+      it("keeps the ceiling an earlier run recorded past a later resume stopped before its turn loop", async () => {
+        const { factory } = createSessionFactory();
+        ({ manager } = createManager({
+          createSubagentSession: factory,
+          registry: registryWith("Reviewer", { maxTurns: AGENT_MAX_TURNS, toolNames: ["read"] }),
+          history: historyWith([
+            recordEntry({ type: "Reviewer", turnBudget: { maxTurns: 3, used: 2, phase: "within" } }),
+            recordEntry({ type: "Reviewer", turnBudget: undefined, status: "stopped", stoppedWhileQueued: true }),
+          ]),
+        }));
+
+        await manager.resume("earlier-1", "continue", { background: false });
+
+        expect(factory.mock.calls[0][0].turnLimits?.maxTurns).toBe(3);
+      });
+    });
+
+    describe("its workspace", () => {
+      it("continues a child that ran outside any provider's workspace in the directory it ran in", async () => {
+        const { factory } = createSessionFactory();
+        const header = { ...EARLIER_HEADER, cwd: "/work/where-the-parent-was" };
+        ({ manager } = createManager({ createSubagentSession: factory, history: historyWith(undefined, { transcriptHeader: () => header }) }));
+
+        await manager.resume("earlier-1", "continue", { background: false });
+
+        expect(factory).toHaveBeenCalledWith(expect.objectContaining({ transcript: { ...EARLIER_CONTINUATION, header } }));
+      });
+
+      it("refuses a child a provider's workspace held at the parent's own directory", async () => {
+        ({ manager } = createManager({ history: historyWith([recordEntry({ providerWorkspace: true })]) }));
+
+        expect(await manager.resume("earlier-1", "continue", { background: false })).toEqual({
+          kind: "refused",
+          reason: "workspace-disposed",
+        });
+      });
+    });
+
+    describe("interrupted while its transcript reopens", () => {
+      /** What the manager's observer saw of the record as each run finished: what the event, entry, and nudge read. */
+      let finished: { kind: RunKind; status: string; entry: PersistedSubagentRecord }[];
+
+      /**
+       * A manager whose restored child's reopenings each wait until the test
+       * settles them, in order, and whose observer records each finished run.
+       */
+      function pendingReopens() {
+        finished = [];
+        const reopenings: PromiseWithResolvers<SubagentSession>[] = [];
+        const stub = createSubagentSessionStub();
+        stub.runTurnLoop.mockResolvedValue(turnLoopResult({ responseText: "Answered the retry." }));
+        const factory = vi.fn((_params: CreateSubagentSessionParams): Promise<SubagentSession> => {
+          const reopening = Promise.withResolvers<SubagentSession>();
+          reopenings.push(reopening);
+          return reopening.promise;
+        });
+        ({ manager } = createManager({
+          createSubagentSession: factory,
+          history: historyWith(),
+          observer: {
+            onSubagentRunFinished: (record, run) => {
+              finished.push({ kind: run.kind, status: run.status, entry: toPersistedRecord(record, run) });
+            },
+          },
+        }));
+        return {
+          stub,
+          factory,
+          open: (index: number) => { reopenings[index].resolve(toSubagentSession(stub)); },
+          fail: (index: number) => { reopenings[index].reject(new Error("The transcript could not be opened just now.")); },
+        };
+      }
+
+      /** Start a resume of the restored child, failing the test if it is refused. */
+      function startedResume(prompt: string) {
+        const start = manager.startResume("earlier-1", prompt, { background: false });
+        if (start.kind !== "started") throw new Error(`resume refused: ${start.reason}`);
+        return start.record;
+      }
+
+      it("refuses a retry until the stopped run has ended, then ends that run stopped, taking no turn", async () => {
+        const { stub, factory, open } = pendingReopens();
+        const record = startedResume("continue");
+        expect(manager.abort("earlier-1")).toBe(true);
+
+        expect(record.resumeRefusal).toBe("still-running");
+        expect(manager.startResume("earlier-1", "try again", { background: false })).toEqual({
+          kind: "refused",
+          reason: "still-running",
+        });
+        open(0);
+        await record.promise;
+
+        expect(stub.runTurnLoop).not.toHaveBeenCalled();
+        expect(finished).toEqual([{ kind: "resume", status: "stopped", entry: expect.objectContaining({ status: "stopped" }) }]);
+        expect(record.resumeRefusal).toBeUndefined();
+
+        await manager.resume("earlier-1", "try again", { background: false });
+
+        expect(factory).toHaveBeenCalledOnce();
+        expect(stub.runTurnLoop).toHaveBeenCalledExactlyOnceWith("try again", expect.any(Object));
+        expect(finished.map(({ status }) => status)).toEqual(["stopped", "completed"]);
+        expect(record.result).toBe("Answered the retry.");
+      });
+
+      it("starts exactly one further reopening after repeated stops and retries while a reopening fails", async () => {
+        const { factory, open, fail } = pendingReopens();
+        const record = startedResume("continue");
+        expect(manager.abort("earlier-1")).toBe(true);
+        for (const prompt of ["retry one", "retry two"]) {
+          expect(manager.startResume("earlier-1", prompt, { background: false }).kind).toBe("refused");
+          expect(manager.abort("earlier-1")).toBe(false);
+        }
+
+        fail(0);
+        await record.promise;
+        expect(finished.map(({ status }) => status)).toEqual(["stopped"]);
+
+        const retry = manager.resume("earlier-1", "retry three", { background: false });
+        expect(manager.startResume("earlier-1", "retry four", { background: false }).kind).toBe("refused");
+        open(1);
+        await retry;
+
+        expect(factory).toHaveBeenCalledTimes(2);
+        expect(finished.map(({ status }) => status)).toEqual(["stopped", "completed"]);
+        expect(record.result).toBe("Answered the retry.");
+      });
+
+      it("disposes the session a reopening produces after the manager is torn down, ending the run once", async () => {
+        const { stub, open } = pendingReopens();
+        const record = startedResume("continue");
+        manager.abortAll();
+        expect(manager.startResume("earlier-1", "try again", { background: false }).kind).toBe("refused");
+
+        await manager.dispose();
+        open(0);
+        await record.promise;
+
+        expect(stub.dispose).toHaveBeenCalledOnce();
+        expect(record.isSessionReady()).toBe(false);
+        expect(stub.runTurnLoop).not.toHaveBeenCalled();
+        expect(finished.map(({ status }) => status)).toEqual(["stopped"]);
       });
     });
   });

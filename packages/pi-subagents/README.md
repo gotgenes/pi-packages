@@ -137,6 +137,20 @@ Only the call's own flag does this; an agent file's `run_in_background` default 
 A background resume shows in the widget regardless of the mode the agent was spawned in, and a foreground resume streams its progress inline.
 Like a background spawn, a background resume waits for a slot when the [concurrency limit](#concurrency) is reached, and its result says it was queued.
 
+A settled agent stays resumable after a `/reload`, and after restarting Pi and reopening the same parent session.
+That includes an agent that the end of the parent session [stopped](#when-the-parent-session-ends) while it was running, once its transcript holds a prompt and a reply.
+The parent session records each finished run, so a `resume` naming an agent from before the reload continues that agent's own transcript under its original ID, as the agent type it was, in the directory it ran in, on the model its transcript selected, under the turn limit it ran with, and with its tool, token, and compaction counts carried on.
+A fork can resume children it spawned itself, but neither the `subagent` tool nor `SubagentsService.resume` can resume children inherited from the source parent.
+Reopen the original parent to continue those children.
+An agent whose agent type has since been deleted or disabled is not resumable, rather than running under another definition; the definition is re-read from disk on every such resume, through either front door.
+Neither is one whose type name is now supplied by a different definition than the one it ran under, such as the built-in or global agent a deleted project `.pi/agents/<name>.md` was overriding: the same name may grant other tools.
+Edits to the very file it ran under apply, as they would to a new spawn.
+An agent that ran in a workspace a workspace provider prepared is not resumable this way, because its workspace was removed when the previous session ended.
+An agent recorded by a version of this package that did not yet record its transcript's identity is not resumable this way; its transcript is still viewable in `/subagents:sessions`.
+The resume fails with an error before the model receives anything, leaving the file as it found it, when the transcript at the recorded path is no longer the agent's whole conversation (removed, emptied, cut back, missing an entry from its middle, or replaced by another session, including while the resume waited for a concurrency slot), or when the model its transcript selected is no longer available: its conversation is never sent to another model instead.
+A compacted transcript resumes from its summary, as Pi would continue it.
+Another process writing the transcript at the same moment the resume opens it is not supported.
+
 ### `get_subagent_result`
 
 Check status and retrieve results from a background agent.
@@ -251,6 +265,12 @@ Because that agent never started, the notification says so and offers no result 
 Reloading (`/reload`), quitting, starting or switching to another session, and forking all stop every running and queued subagent, and Pi gives extensions no way to defer or cancel them.
 When that stops anything, the parent session gets one message listing each stopped agent: its ID, type, and description, whether it was running or still queued, and its transcript path when it has one.
 The message starts no turn; the parent agent reads it on its next one, so neither you nor the agent waits for results that will not arrive.
+The shutdown finishes only once each stopped run has ended and been recorded in the parent session, so a run the shutdown stopped stays listed in `/subagents:sessions` after a `/reload`.
+
+The message also names the `subagent` call that resumes each stopped agent the parent session can [resume](#subagent) later, and tells the agent to spawn the others again.
+An agent qualifies when its run recorded a transcript that holds a prompt and a reply, it ran outside a workspace a workspace provider prepared, and the run was recorded with its transcript's identity.
+A queued agent that never started has no transcript, so it does not qualify; a queued resume of an agent that already ran does.
+The resume still refuses, or fails before the model receives anything, if the agent's definition or the model its transcript selected is no longer available by then, as any resume after a reload does.
 
 Pi refuses `/reload` only while the parent itself is responding, so a background agent is still exposed to it.
 Let background agents finish, or collect their results, before reloading.
@@ -389,6 +409,7 @@ The snapshot carries identity (`id`, `type`, `description`), lifecycle status (`
 It also carries `resumeRefusal`: absent when `resume` would start a run, otherwise the reason it would refuse with (the [`resume` contract](#resume-contract) lists them).
 Render a Resume affordance from it without calling `resume` first.
 `still-running` clears when the run settles, `resume-queued` clears when the queued resume's run settles, and a queued agent's `no-session` clears once it starts; the other reasons are final.
+A restored agent's run that was stopped while its transcript reopened still reads `still-running`, though its `status` is already `stopped`, until that reopening settles and the run's terminal event fires.
 
 It deliberately withholds momentary activity (the tools running right now, the partial response text) and this package's internal bookkeeping.
 A pulled snapshot of momentary state would be stale on arrival; [decision 0005](docs/decisions/0005-subagent-record-admission-policy.md) records the full policy and what would reopen it.
@@ -406,16 +427,18 @@ Like a background spawn, it waits for a slot when the [concurrency limit](#concu
 It never throws and never rejects.
 A resume that could not start resolves to `{ kind: "refused", reason }` instead, promptly — the checks are synchronous and no turn loop runs:
 
-| `reason`             | Meaning                                                         |
-| -------------------- | --------------------------------------------------------------- |
-| `unknown-agent`      | No record answers to that id (records are cleared per session)  |
-| `still-running`      | The agent has not settled; wait, or `steer` it while it runs    |
-| `resume-queued`      | A resume is waiting for a concurrency slot; wait for its run    |
-| `no-session`         | The agent never had a session to continue                       |
-| `session-released`   | Its session was released after the retention window             |
-| `workspace-disposed` | Its isolated workspace is gone, so a resume cannot re-enter it  |
+| `reason`                 | Meaning                                                        |
+| ------------------------ | -------------------------------------------------------------- |
+| `unknown-agent`          | No record or recorded run in this parent session has that id   |
+| `still-running`          | The agent has not settled; wait, or `steer` it while it runs   |
+| `resume-queued`          | A resume is waiting for a concurrency slot; wait for its run   |
+| `no-session`             | The agent has no session, or saved transcript proven its own   |
+| `session-released`       | Its session was released after the retention window            |
+| `workspace-disposed`     | Its isolated workspace is gone, so a resume cannot re-enter it |
+| `agent-type-unavailable` | Its agent type is gone, disabled, or now defined elsewhere     |
 
-Every record's `resumeRefusal` field predicts this answer before the call, minus `unknown-agent`, which no record can carry.
+Every record's `resumeRefusal` field predicts this answer before the call, minus `unknown-agent` and `agent-type-unavailable`, which no record can carry.
+An agent from before a `/reload` or a restart has no record until a resume restores it, so only the call answers for it.
 
 A resumed run that _fails_ is still `{ kind: "resumed" }`; the snapshot carries `status: "error"` and the message.
 Refused means nothing started.

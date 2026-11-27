@@ -6,9 +6,10 @@
  * `test/session/provider-inheritance.test.ts`, but those tests pass whether or
  * not the root calls it — only this file fails if the wiring is removed.
  */
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { SessionManager } from "@earendil-works/pi-coding-agent";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const sdk = vi.hoisted(() => {
@@ -61,7 +62,9 @@ vi.mock("#src/lifecycle/create-subagent-session", async () => {
 import subagentsExtension from "#src/index";
 import { createSubagentSession } from "#src/lifecycle/create-subagent-session";
 import { getSubagentsService } from "#src/service/service";
+import { makeWorkspace, makeWorkspaceProvider } from "./helpers/make-workspace";
 import { createMockSession, createSubagentSessionStub, toSubagentSession } from "./helpers/mock-session";
+import { turnLoopResult } from "./helpers/turn-loop-result";
 
 function makePi() {
   const tools = new Map<string, any>();
@@ -117,6 +120,33 @@ function makeParentRegistry() {
   };
 }
 
+/**
+ * A child session whose turn loop runs until it is aborted. Like a real
+ * session, the loop ends only once the abort has unwound it, which Pi does on a
+ * later pass of the event loop, not synchronously inside the abort.
+ */
+function createRunningChildStub(
+  outputFile = "/sessions/child.jsonl",
+  transcript: Parameters<typeof createSubagentSessionStub>[2] = {},
+) {
+  const stub = createSubagentSessionStub(createMockSession(), outputFile, transcript);
+  stub.runTurnLoop.mockImplementation(
+    (_prompt: string, { signal }: { signal: AbortSignal }) =>
+      new Promise((resolve) => {
+        signal.addEventListener(
+          "abort",
+          () => {
+            setTimeout(() => {
+              resolve(turnLoopResult({ responseText: "" }));
+            }, 0);
+          },
+          { once: true },
+        );
+      }),
+  );
+  return stub;
+}
+
 /** A UI context that records what the widget registers on it. */
 function makeRecordingUI() {
   return { setStatus: vi.fn(), setWidget: vi.fn() };
@@ -127,6 +157,7 @@ function makeSessionStartCtx(
   parentRegistry: unknown,
   ui: ReturnType<typeof makeRecordingUI>,
   hasUI = false,
+  entries: unknown[] = [],
 ) {
   return {
     hasUI,
@@ -138,6 +169,7 @@ function makeSessionStartCtx(
       getSessionId: vi.fn(() => "session-1"),
       getSessionFile: vi.fn(() => "/sessions/parent.jsonl"),
       getBranch: vi.fn(() => []),
+      getEntries: vi.fn(() => entries),
     },
     getSystemPrompt: vi.fn(() => "parent prompt"),
   } as any;
@@ -313,12 +345,12 @@ describe("composition root: widget teardown", () => {
    * widget registered and its interval live.
    *
    * The agent must be **terminal** before the shutdown. An agent still running
-   * at shutdown is aborted by the lifecycle handler, and the notification that
-   * abort settles lands after `manager.dispose()` has emptied the registry — so
-   * `update()` takes its idle path into `clearWidget()` and tears the widget
-   * down incidentally, whether or not anything called `dispose()`. A completed
-   * agent produces no such notification (`disposeSession()` notifies no
-   * observer), so the teardown is observable only if it was actually wired.
+   * at shutdown is aborted by the lifecycle handler, and the terminal
+   * transition that abort settles notifies the widget in the middle of the
+   * teardown, so what the widget shows afterwards would depend on that
+   * `update()` as well as on the wiring. A completed agent produces no such
+   * notification (`disposeSession()` notifies no observer), so the teardown is
+   * observable only if it was actually wired.
    */
   async function completeAgentIntoWidget() {
     vi.mocked(createSubagentSession).mockResolvedValue(
@@ -492,9 +524,7 @@ describe("composition root: parent tool list", () => {
 
 describe("composition root: shutdown notice", () => {
   it("tells the parent session which running agents a reload stopped", async () => {
-    const stub = createSubagentSessionStub(createMockSession(), "/sessions/child.jsonl");
-    // The child's turn loop never settles, so it is still running at shutdown.
-    stub.runTurnLoop.mockReturnValue(new Promise(() => {}));
+    const stub = createRunningChildStub();
     vi.mocked(createSubagentSession).mockResolvedValue(toSubagentSession(stub));
     const { pi, fire } = makePi();
     subagentsExtension(pi);
@@ -520,5 +550,327 @@ describe("composition root: shutdown notice", () => {
       },
       { triggerTurn: false },
     );
+  });
+});
+
+describe("composition root: stopped record at shutdown", () => {
+  it("persists a running child's stopped record before the shutdown handler resolves", async () => {
+    const stub = createRunningChildStub();
+    vi.mocked(createSubagentSession).mockResolvedValue(toSubagentSession(stub));
+    const { pi, fire } = makePi();
+    subagentsExtension(pi);
+    await fire("session_start", {}, makeSessionStartCtx(makeParentRegistry().registry, makeRecordingUI()));
+
+    const service = getSubagentsService()!;
+    const id = service.spawn("general-purpose", "hi", { description: "child" });
+    await vi.waitFor(() => {
+      expect(stub.runTurnLoop).toHaveBeenCalled();
+    });
+    expect(service.getRecord(id)?.status).toBe("running");
+    expect(pi.appendEntry).not.toHaveBeenCalled();
+
+    await fire("session_shutdown", { type: "session_shutdown", reason: "reload" }, {});
+
+    expect(pi.appendEntry).toHaveBeenCalledExactlyOnceWith(
+      "subagents:record",
+      expect.objectContaining({ id, status: "stopped", stoppedWhileQueued: false }),
+    );
+  });
+});
+
+describe("composition root: a settled child across a reload", () => {
+  let tasksDir: string;
+  /** The global agent directory, empty unless a test defines agents there, so the host's own agents stay out. */
+  let agentDir: string;
+
+  beforeEach(() => {
+    tasksDir = mkdtempSync(join(tmpdir(), "pi-root-restore-"));
+    agentDir = mkdtempSync(join(tmpdir(), "pi-root-restore-agent-"));
+    vi.stubEnv("PI_CODING_AGENT_DIR", agentDir);
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    rmSync(tasksDir, { recursive: true, force: true });
+    rmSync(agentDir, { recursive: true, force: true });
+  });
+
+  function createParent() {
+    const parent = SessionManager.create("/tmp", tasksDir);
+    parent.appendMessage({ role: "user", content: "Delegate this", timestamp: 1 });
+    return parent;
+  }
+
+  function contextFor(parent: SessionManager) {
+    return { ...makeSessionStartCtx(makeParentRegistry().registry, makeRecordingUI()), sessionManager: parent };
+  }
+
+  /** The entry the child's run leaves last in its transcript, which its record names. */
+  const CHILD_LEAF = "child-last-entry";
+
+  /**
+   * Persist a completed run into the parent and shut down its extension instance.
+   * `workspace` registers a provider that prepares the child a directory first.
+   * The child's session reports the id its transcript's header names, and the
+   * definition the factory would have assembled it under: `definition`, or the
+   * built-in one.
+   */
+  async function runChildThenReload(
+    parent: SessionManager,
+    transcript: string,
+    options: { type?: string; workspace?: string; definition?: string } = {},
+  ): Promise<string> {
+    const sessionId = JSON.parse(readFileSync(transcript, "utf8").split("\n")[0]).id as string;
+    const agentDefinition = options.definition ?? "builtin";
+    vi.mocked(createSubagentSession).mockClear();
+    vi.mocked(createSubagentSession).mockResolvedValue(
+      toSubagentSession(createSubagentSessionStub(createMockSession(), transcript, { sessionId, leafId: CHILD_LEAF, agentDefinition })),
+    );
+    const { pi, tools, fire } = makePi();
+    vi.mocked(pi.appendEntry).mockImplementation((customType: string, data: unknown) => {
+      parent.appendCustomEntry(customType, data);
+    });
+    subagentsExtension(pi);
+    await fire("session_start", {}, contextFor(parent));
+    if (options.workspace !== undefined) {
+      getSubagentsService()!.registerWorkspaceProvider(makeWorkspaceProvider(makeWorkspace(options.workspace)));
+    }
+    const result = await tools.get("subagent").execute(
+      "tool-call-1",
+      { prompt: "Map the configs", description: "configs", subagent_type: options.type ?? "general-purpose" },
+      undefined,
+      undefined,
+    );
+    await fire("session_shutdown", {});
+    const id = /Agent ID: (\S+)/.exec(result.content[0].text)?.[1];
+    if (!id) throw new Error(`no agent id in: ${result.content[0].text}`);
+    return id;
+  }
+
+  /** Start a fresh extension instance on the supplied parent and attempt to resume `id`. */
+  async function resumeAfterReload(parent: SessionManager, id: string, type = "general-purpose") {
+    vi.mocked(createSubagentSession).mockClear();
+    const resumed = createSubagentSessionStub(createMockSession());
+    resumed.runTurnLoop.mockResolvedValue({
+      responseText: "Picked up where I left off.",
+      turnBudget: { used: 1, phase: "within" },
+    });
+    vi.mocked(createSubagentSession).mockResolvedValue(toSubagentSession(resumed));
+    const { pi, tools, fire } = makePi();
+    subagentsExtension(pi);
+    await fire("session_start", {}, contextFor(parent));
+    return tools.get("subagent").execute(
+      "tool-call-2",
+      { prompt: "Now the fallback", description: "configs", subagent_type: type, resume: id },
+      undefined,
+      undefined,
+    );
+  }
+
+  it.each(["original", "fork"])("lets the %s parent resume its own child after reopening", async (kind) => {
+    const parent = createParent();
+    if (kind === "fork") parent.createBranchedSession(parent.getLeafId()!);
+    const transcript = join(tasksDir, "child.jsonl");
+    // The child ran in the parent's own directory, as the session context's cwd says.
+    const header = { id: "child-session", parentSession: parent.getSessionId(), cwd: "/tmp" };
+    writeFileSync(transcript, `${JSON.stringify({ type: "session", ...header })}\n`);
+    const id = await runChildThenReload(parent, transcript);
+
+    const result = await resumeAfterReload(SessionManager.open(parent.getSessionFile()!), id);
+
+    expect(createSubagentSession).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ type: "general-purpose", transcript: { file: transcript, header, leafId: CHILD_LEAF, agentDefinition: "builtin" } }),
+      expect.anything(),
+    );
+    expect(result.content[0].text).toBe(`Agent ID: ${id}\n\nPicked up where I left off.`);
+  });
+
+  it("resumes a child that /reload stopped mid-run, as the shutdown notice says it can", async () => {
+    const parent = createParent();
+    const transcript = join(tasksDir, "child.jsonl");
+    const header = { id: "child-session", parentSession: parent.getSessionId(), cwd: "/tmp" };
+    writeFileSync(transcript, `${JSON.stringify({ type: "session", ...header })}\n`);
+    const stub = createRunningChildStub(transcript, { sessionId: header.id, leafId: CHILD_LEAF, agentDefinition: "builtin" });
+    stub.holdsContinuableTranscript.mockReturnValue(true);
+    vi.mocked(createSubagentSession).mockClear();
+    vi.mocked(createSubagentSession).mockResolvedValue(toSubagentSession(stub));
+    const { pi, tools, fire } = makePi();
+    vi.mocked(pi.appendEntry).mockImplementation((customType: string, data: unknown) => {
+      parent.appendCustomEntry(customType, data);
+    });
+    subagentsExtension(pi);
+    await fire("session_start", {}, contextFor(parent));
+    const started = await tools.get("subagent").execute(
+      "tool-call-1",
+      { prompt: "Map the configs", description: "configs", subagent_type: "general-purpose", run_in_background: true },
+      undefined,
+      undefined,
+    );
+    const id = /Agent ID: (\S+)/.exec(started.content[0].text)?.[1];
+    await vi.waitFor(() => {
+      expect(stub.runTurnLoop).toHaveBeenCalled();
+    });
+
+    await fire("session_shutdown", { type: "session_shutdown", reason: "reload" }, {});
+
+    expect(vi.mocked(pi.sendMessage).mock.calls[0][0].content).toContain(
+      `"configs": was running; resume it by calling subagent with resume: "${id}".`,
+    );
+    const result = await resumeAfterReload(parent, id!);
+    expect(createSubagentSession).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ transcript: { file: transcript, header, leafId: CHILD_LEAF, agentDefinition: "builtin" } }),
+      expect.anything(),
+    );
+    expect(result.content[0].text).toBe(`Agent ID: ${id}\n\nPicked up where I left off.`);
+  });
+
+  it("refuses inherited children through both the tool and service without opening or changing the transcript", async () => {
+    const parent = createParent();
+    const transcript = join(tasksDir, "original-child.jsonl");
+    const contents = `${JSON.stringify({ type: "session", id: "original-child", cwd: "/tmp", parentSession: parent.getSessionId() })}\n`;
+    writeFileSync(transcript, contents);
+    const id = await runChildThenReload(parent, transcript);
+
+    const fork = SessionManager.open(parent.getSessionFile()!);
+    fork.createBranchedSession(fork.getLeafId()!);
+    expect(fork.getEntries()).toEqual(parent.getEntries());
+    const result = await resumeAfterReload(fork, id);
+    expect(result.content[0].text).toContain(`Agent not found: "${id}"`);
+    expect(await getSubagentsService()!.resume(id, "continue")).toEqual({ kind: "refused", reason: "unknown-agent" });
+    expect(createSubagentSession).not.toHaveBeenCalled();
+    expect(readFileSync(transcript, "utf8")).toBe(contents);
+
+    const originalResult = await resumeAfterReload(SessionManager.open(parent.getSessionFile()!), id);
+    expect(originalResult.content[0].text).toBe(`Agent ID: ${id}\n\nPicked up where I left off.`);
+  });
+
+  it.each([
+    ["in a directory of its own", "/ws/child"],
+    ["at the parent's own directory", "/tmp"],
+  ])("refuses a child a provider's workspace held %s, opening nothing", async (_label, workspace) => {
+    const parent = createParent();
+    const transcript = join(tasksDir, "child.jsonl");
+    writeFileSync(transcript, `${JSON.stringify({ type: "session", id: "child-session", parentSession: parent.getSessionId(), cwd: workspace })}\n`);
+    const id = await runChildThenReload(parent, transcript, { workspace });
+
+    const result = await resumeAfterReload(parent, id);
+
+    expect(createSubagentSession).not.toHaveBeenCalled();
+    expect(result.content[0].text).toMatch(/isolated workspace that no longer exists/);
+  });
+
+  describe("a child whose agent type has changed since", () => {
+    let projectDir: string;
+
+    beforeEach(() => {
+      projectDir = mkdtempSync(join(tmpdir(), "pi-root-restore-agents-"));
+      mkdirSync(join(projectDir, ".pi", "agents"), { recursive: true });
+      writeReviewer("");
+      // The root loads custom agents from process.cwd(), so point it at the fixture.
+      vi.spyOn(process, "cwd").mockReturnValue(projectDir);
+    });
+
+    afterEach(() => {
+      vi.mocked(process.cwd).mockRestore();
+      rmSync(projectDir, { recursive: true, force: true });
+    });
+
+    /** A read-only custom agent, with any extra frontmatter lines. */
+    function writeReviewer(frontmatter: string) {
+      writeFileSync(reviewerFile(), `---\ndescription: Reviews without editing\ntools: read\n${frontmatter}---\n\nReview only.`);
+    }
+
+    /** The project file the reviewer agent is defined in, which a run under it records. */
+    function reviewerFile() {
+      return join(projectDir, ".pi", "agents", "reviewer.md");
+    }
+
+    /** Resume `id` through the tool and the service, expecting both to refuse it as agent-type-unavailable, opening nothing. */
+    async function expectRefusedThroughBothDoors(parent: SessionManager, id: string, type: string) {
+      const result = await resumeAfterReload(parent, id, type);
+      expect(result.content[0].text).toMatch(/ran as an agent type that is no longer defined, is disabled, or is now defined elsewhere/);
+      expect(await getSubagentsService()!.resume(id, "continue")).toEqual({ kind: "refused", reason: "agent-type-unavailable" });
+      expect(createSubagentSession).not.toHaveBeenCalled();
+    }
+
+    it("refuses it once deleting its read-only project file uncovers the built-in of the same name", async () => {
+      const explore = join(projectDir, ".pi", "agents", "Explore.md");
+      writeFileSync(explore, "---\ndescription: Explores by reading\ntools: read\n---\n\nRead only.");
+      const parent = createParent();
+      const transcript = join(tasksDir, "explore.jsonl");
+      writeFileSync(transcript, `${JSON.stringify({ type: "session", id: "explore-session", parentSession: parent.getSessionId(), cwd: "/tmp" })}\n`);
+      const id = await runChildThenReload(parent, transcript, { type: "Explore", definition: explore });
+      // The built-in Explore, which grants bash, now answers to the name.
+      rmSync(explore);
+
+      await expectRefusedThroughBothDoors(parent, id, "Explore");
+    });
+
+    it("refuses it once deleting its project file uncovers a global file of the same name", async () => {
+      mkdirSync(join(agentDir, "agents"));
+      writeFileSync(join(agentDir, "agents", "reviewer.md"), "---\ndescription: Reviews and fixes\ntools: read, bash, edit\n---\n\nFix it.");
+      const parent = createParent();
+      const transcript = join(tasksDir, "reviewer.jsonl");
+      writeFileSync(transcript, `${JSON.stringify({ type: "session", id: "reviewer-session", parentSession: parent.getSessionId(), cwd: "/tmp" })}\n`);
+      const id = await runChildThenReload(parent, transcript, { type: "reviewer", definition: reviewerFile() });
+      rmSync(reviewerFile());
+
+      await expectRefusedThroughBothDoors(parent, id, "reviewer");
+    });
+
+    it.each([
+      ["deleted", () => { rmSync(join(projectDir, ".pi", "agents", "reviewer.md")); }],
+      ["disabled", () => { writeReviewer("enabled: false\n"); }],
+    ])("refuses it once %s, through both the tool and the service, opening nothing", async (_label, change) => {
+      const parent = createParent();
+      const transcript = join(tasksDir, "reviewer.jsonl");
+      writeFileSync(transcript, `${JSON.stringify({ type: "session", id: "reviewer-session", parentSession: parent.getSessionId(), cwd: "/tmp" })}\n`);
+      const id = await runChildThenReload(parent, transcript, { type: "reviewer", definition: reviewerFile() });
+      change();
+
+      const result = await resumeAfterReload(parent, id);
+
+      expect(result.content[0].text).toBe(
+        `Agent "${id}" ran as an agent type that is no longer defined, is disabled, or is now defined elsewhere; ` +
+          "resume is unavailable because it would run under a definition it never had. " +
+          "Spawn a new agent of an available type instead.",
+      );
+      expect(await getSubagentsService()!.resume(id, "continue")).toEqual({
+        kind: "refused",
+        reason: "agent-type-unavailable",
+      });
+      expect(createSubagentSession).not.toHaveBeenCalled();
+    });
+
+    it("refuses it through the service alone, though no subagent call has re-read the definitions since", async () => {
+      const parent = createParent();
+      const transcript = join(tasksDir, "reviewer.jsonl");
+      writeFileSync(transcript, `${JSON.stringify({ type: "session", id: "reviewer-session", parentSession: parent.getSessionId(), cwd: "/tmp" })}\n`);
+      const id = await runChildThenReload(parent, transcript, { type: "reviewer", definition: reviewerFile() });
+      vi.mocked(createSubagentSession).mockClear();
+      const { pi, fire } = makePi();
+      subagentsExtension(pi);
+      await fire("session_start", {}, contextFor(parent));
+      // Disabled after this instance loaded its definitions.
+      writeReviewer("enabled: false\n");
+
+      expect(await getSubagentsService()!.resume(id, "continue")).toEqual({
+        kind: "refused",
+        reason: "agent-type-unavailable",
+      });
+      expect(createSubagentSession).not.toHaveBeenCalled();
+    });
+
+    it("restores it while the type is still defined and enabled", async () => {
+      const parent = createParent();
+      const transcript = join(tasksDir, "reviewer.jsonl");
+      writeFileSync(transcript, `${JSON.stringify({ type: "session", id: "reviewer-session", parentSession: parent.getSessionId(), cwd: "/tmp" })}\n`);
+      const id = await runChildThenReload(parent, transcript, { type: "reviewer", definition: reviewerFile() });
+
+      const result = await resumeAfterReload(parent, id);
+
+      expect(createSubagentSession).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ type: "reviewer" }), expect.anything());
+      expect(result.content[0].text).toBe(`Agent ID: ${id}\n\nPicked up where I left off.`);
+    });
   });
 });

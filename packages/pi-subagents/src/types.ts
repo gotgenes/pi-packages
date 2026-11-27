@@ -6,6 +6,7 @@ import type { Model } from "@earendil-works/pi-ai";
 import type { AgentSessionEvent, SessionContext as SdkSessionContext } from "@earendil-works/pi-coding-agent";
 import type { LockDeclaration } from "#src/config/invocation-config";
 import type { SubagentThinkingLevel } from "#src/config/thinking-level";
+import type { SessionEntryLike } from "#src/persisted-record";
 import type { ModelRegistry } from "#src/session/model-resolver";
 
 
@@ -88,6 +89,8 @@ export interface AgentConfig extends AgentIdentity, AgentPromptConfig {
   enabled?: boolean;
   /** Where this agent was loaded from */
   source?: "default" | "project" | "global";
+  /** The file a project or global definition was read from; absent for an embedded default. */
+  filePath?: string;
 }
 
 export interface AgentInvocation {
@@ -114,6 +117,8 @@ export interface SessionContext {
     getSessionFile(): string | undefined;
     getSessionId(): string;
     getBranch(): unknown[];
+    /** Every entry in the session file, across branches. */
+    getEntries(): readonly SessionEntryLike[];
   };
 }
 

@@ -1,4 +1,4 @@
-import type { AgentSession } from "@earendil-works/pi-coding-agent";
+import { type AgentSession, SessionManager } from "@earendil-works/pi-coding-agent";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { SubagentSession } from "#src/lifecycle/subagent-session";
 import { resolveTurnLimits, type TurnLimitRequest } from "#src/lifecycle/turn-limits";
@@ -227,6 +227,36 @@ describe("SubagentSession — accessors", () => {
       session.thinkingLevel = "high";
       expect(sub.thinkingLevel).toBe("high");
     });
+  });
+});
+
+describe("SubagentSession — a transcript a later manager could continue", () => {
+  /** A child session on Pi's own in-memory session manager, spawned by `parentSession`. */
+  function onTranscript(parentSession: string | undefined, roles: readonly ("user" | "assistant")[]) {
+    const { session } = createSession("X");
+    const sessionManager = SessionManager.inMemory("/tmp");
+    sessionManager.newSession({ parentSession });
+    for (const role of roles) {
+      const message = role === "user" ? { role, content: "Map the configs", timestamp: 1 } : assistantMessage("Mapped.");
+      sessionManager.appendMessage(message as Parameters<SessionManager["appendMessage"]>[0]);
+    }
+    const { sub } = makeSubagentSession({ ...session, sessionManager } as unknown as TestSession);
+    return sub;
+  }
+
+  it("holds one whose spawning parent is named and whose prompt was answered", () => {
+    expect(onTranscript("parent-session", ["user", "assistant"]).holdsContinuableTranscript()).toBe(true);
+  });
+
+  it.each([
+    ["was never prompted", []],
+    ["was prompted but never answered", ["user"]],
+  ] as const)("holds no conversation to continue for a child that %s", (_label, roles) => {
+    expect(onTranscript("parent-session", roles).holdsContinuableTranscript()).toBe(false);
+  });
+
+  it("holds none whose header names no spawning parent, which a later manager cannot match", () => {
+    expect(onTranscript(undefined, ["user", "assistant"]).holdsContinuableTranscript()).toBe(false);
   });
 });
 

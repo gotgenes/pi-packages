@@ -29,6 +29,7 @@ function makeSessionCtx(overrides?: Partial<SessionContext>): SessionContext {
       getSessionFile: () => "/sessions/test.jsonl",
       getSessionId: () => "test-session-id",
       getBranch: () => [],
+      getEntries: () => [],
     },
     ...overrides,
   };
@@ -166,6 +167,7 @@ describe("SubagentRuntime context query methods", () => {
         getSessionFile: () => "/sessions/parent.jsonl",
         getSessionId: () => "session-42",
         getBranch: () => [],
+        getEntries: () => [],
       },
     });
     runtime.setSessionContext(ctx);
@@ -181,11 +183,58 @@ describe("SubagentRuntime context query methods", () => {
         getSessionFile: () => undefined,
         getSessionId: () => "session-99",
         getBranch: () => [],
+        getEntries: () => [],
       },
     });
     runtime.setSessionContext(ctx);
     const info = runtime.getSessionInfo();
     expect(info.parentSessionFile).toBe("");
     expect(info.parentSessionId).toBe("session-99");
+  });
+});
+
+describe("SubagentRuntime — reaching an earlier manager's children", () => {
+  beforeEach(() => {
+    mockBuildParentSnapshot.mockReset();
+  });
+
+  describe("getSessionEntries", () => {
+    it("returns every entry the parent session holds", () => {
+      const runtime = createSubagentRuntime();
+      const entries = [{ type: "custom", customType: "subagents:record", data: { id: "a" } }];
+      runtime.setSessionContext(
+        makeSessionCtx({
+          sessionManager: {
+            getSessionFile: () => "/sessions/test.jsonl",
+            getSessionId: () => "test-session-id",
+            getBranch: () => [],
+            getEntries: () => entries,
+          },
+        }),
+      );
+
+      expect(runtime.getSessionEntries()).toBe(entries);
+    });
+
+    it("returns none outside a session", () => {
+      expect(createSubagentRuntime().getSessionEntries()).toEqual([]);
+    });
+  });
+
+  describe("snapshotIfInSession", () => {
+    it("snapshots the current parent with a fresh context", () => {
+      const runtime = createSubagentRuntime();
+      const ctx = makeSessionCtx();
+      runtime.setSessionContext(ctx);
+      mockBuildParentSnapshot.mockReturnValueOnce(STUB_SNAPSHOT);
+
+      expect(runtime.snapshotIfInSession()).toBe(STUB_SNAPSHOT);
+      expect(mockBuildParentSnapshot).toHaveBeenCalledWith(ctx, false, undefined);
+    });
+
+    it("answers undefined outside a session, building nothing", () => {
+      expect(createSubagentRuntime().snapshotIfInSession()).toBeUndefined();
+      expect(mockBuildParentSnapshot).not.toHaveBeenCalled();
+    });
   });
 });

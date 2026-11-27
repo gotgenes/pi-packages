@@ -28,6 +28,7 @@ import {
 import { getSessionContextPercent, type SessionStatsLike } from "#src/lifecycle/usage";
 import { extractText } from "#src/session/context";
 import { getAgentConversation } from "#src/session/conversation";
+import { holdsConversation, rootedBranch } from "#src/session/transcript-branch";
 import type { SessionMessage, ThinkingLevel } from "#src/types";
 
 /** Outcome of one turn loop. */
@@ -53,10 +54,18 @@ export interface SubagentSessionMeta {
   /** Child session directory — carried on the completed event as transcript location. */
   sessionDir: string;
   agentName: string;
+  /** Which definition of the agent type the session was assembled under (`definitionOf`); absent from older stubs. */
+  agentDefinition?: string;
   /** The limits every run of this session is held to, resolved at creation. */
   turnLimits: TurnLimits;
   /** Parent context prepended to the first run's prompt, captured at spawn time. */
   parentContext: string | undefined;
+  /**
+   * Whether the session continues a transcript an earlier session wrote. Its
+   * first run here is then a resume: the transcript already holds the parent
+   * context, and that earlier session announced the completion.
+   */
+  continued?: boolean;
   lifecycle: ChildLifecyclePublisher;
 }
 
@@ -68,9 +77,11 @@ export class SubagentSession {
 
   /**
    * Set as the session's first run starts, settled or not: only that run
-   * carries the parent context and announces the child's completion.
+   * carries the parent context and announces the child's completion. A
+   * continued transcript is born with it set, its first run having been an
+   * earlier session's.
    */
-  private hasRun = false;
+  private hasRun: boolean;
 
   /**
    * How the session's last assistant turn ended, tracked for the session's
@@ -88,6 +99,7 @@ export class SubagentSession {
     private readonly meta: SubagentSessionMeta,
   ) {
     this.turnFailure = collectTurnFailure(_session);
+    this.hasRun = meta.continued ?? false;
   }
 
   /**
@@ -100,6 +112,35 @@ export class SubagentSession {
 
   get outputFile(): string | undefined {
     return this.meta.outputFile;
+  }
+
+  /** The child's Pi session id, which its transcript's header names. */
+  get sessionId(): string {
+    return this.meta.sessionId;
+  }
+
+  /** Which definition of its agent type the session was assembled under. */
+  get agentDefinition(): string | undefined {
+    return this.meta.agentDefinition;
+  }
+
+  /** The id of the last entry the child's transcript holds, or undefined while it holds none. */
+  get leafId(): string | undefined {
+    return this._session.sessionManager.getLeafId() ?? undefined;
+  }
+
+  /**
+   * Whether a later manager could reopen and continue the child's transcript,
+   * read the way `createSubagentSession` reads a reopened one: its header
+   * names the spawning parent, and the branch from its leaf is rooted and holds
+   * a prompt and a reply. A child stopped before it was given its prompt, or
+   * before anything answered it, holds no conversation to continue.
+   */
+  holdsContinuableTranscript(): boolean {
+    const sessionManager = this._session.sessionManager;
+    if (!sessionManager.getHeader()?.parentSession) return false;
+    const branch = rootedBranch(sessionManager.getEntries(), sessionManager.getLeafId());
+    return branch !== undefined && holdsConversation(branch);
   }
 
   /** The model the child is running now — a failover or `/model` switch shows here. */

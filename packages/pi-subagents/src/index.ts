@@ -48,6 +48,7 @@ import { createProjectContextLoader } from "#src/session/project-context";
 import { buildAgentPrompt } from "#src/session/prompts";
 import { inheritRegisteredProviders } from "#src/session/provider-inheritance";
 import { deriveSubagentSessionDir } from "#src/session/session-dir";
+import { readTranscriptHeader } from "#src/session/transcript-header";
 import { SettingsManager } from "#src/settings";
 import { AgentTool } from "#src/tools/agent-tool";
 import { GetResultTool } from "#src/tools/get-result-tool";
@@ -120,6 +121,8 @@ export default function (pi: ExtensionAPI) {
       createResourceLoader: (opts) => new DefaultResourceLoader(opts),
       deriveSessionDir: deriveSubagentSessionDir,
       createSessionManager: (cwd, dir) => SessionManager.create(cwd, dir),
+      openSessionManager: (transcript) => SessionManager.open(transcript),
+      readTranscriptHeader,
       createSettingsManager: (cwd, dir) => SdkSettingsManager.create(cwd, dir),
       // The exclusion policy is resolved here, at the composition root, so the
       // assembly factory stays free of it and gets a ready-made settings view.
@@ -182,6 +185,13 @@ export default function (pi: ExtensionAPI) {
     // Read per child rather than once: an MCP server connects in the
     // background, so its tools register after this extension loads.
     listParentToolNames: () => pi.getAllTools().map((tool) => tool.name),
+    // Re-read from disk, as the subagent tool does on every call: a child
+    // continued from its transcript may be reopened by any front door, after
+    // its agent file was edited, disabled, or deleted.
+    currentAgentConfig: (type) => {
+      registry.reload();
+      return registry.findEnabledConfig(type);
+    },
   };
 
   // ConcurrencyLimiter: schedules background run thunks FIFO against the limit.
@@ -196,6 +206,14 @@ export default function (pi: ExtensionAPI) {
     getRunConfig: () => settings,
     getRetentionPolicy: () => settings,
     registry,
+    // A resume of a child this manager never ran (an earlier one did, before a
+    // /reload or a restart) finds it in the parent session's own records.
+    history: {
+      entries: () => runtime.getSessionEntries(),
+      snapshot: () => runtime.snapshotIfInSession(),
+      parentSession: () => runtime.getSessionInfo(),
+      transcriptHeader: readTranscriptHeader,
+    },
   });
 
   // Typed service published via Symbol.for() for cross-extension access.

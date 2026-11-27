@@ -386,7 +386,10 @@ src/
 │   ├── model-resolver.ts           fuzzy model name resolution
 │   ├── package-exclusions.ts       child settings view that disables excluded packages' extensions
 │   ├── provider-inheritance.ts     replays the parent's runtime-registered providers onto the child's own runtime, so the child inherits them without sharing the parent's mutable pool
-│   └── session-dir.ts              session directory derivation
+│   ├── session-dir.ts              session directory derivation
+│   ├── transcript-header.ts        reads the session id, spawning parent, and cwd from the child transcript
+│   ├── transcript-branch.ts        whether a child transcript's raw branch is rooted and holds a prompt and a reply
+│   └── recorded-model.ts           the model a reopened child transcript's branch selects, by Pi's own rule
 │
 ├── lifecycle/                      agent execution and state tracking
 │   ├── subagent-manager.ts         collection manager + observer wiring + session-retention sweep (consumption-aware; an unanswered question holds the safety cap); the resume choke point, refusing from the record's own predicate and reporting a discriminated outcome, so every front door declines the same resumes; a door that returns before the resumed run ends starts one synchronously, and each resume's caller decides whether its outcome is claimed; admits a background resume through the limiter like a background spawn, while a foreground one starts at once
@@ -445,8 +448,8 @@ src/
 └── handlers/                       event handlers
     ├── index.ts                    barrel re-export
     ├── interrupt.ts                turn_start handler — abort all subagents on parent interrupt (ESC), when policy allows
-    ├── lifecycle.ts                session_start, session_before_switch, session_shutdown (aborts, then leaves the shutdown notice)
-    ├── shutdown-notice.ts          the parent-session message naming the agents a shutdown stopped
+    ├── lifecycle.ts                session_start, session_before_switch, session_shutdown (aborts, waits for the stopped runs to end, leaves the shutdown notice, then disposes)
+    ├── shutdown-notice.ts          the parent-session message naming the agents a shutdown stopped, and the resume call for each one the parent can restore
     └── widget-events.ts            widget's host events — session_start (UI context), turn_start (linger aging), session_shutdown (teardown)
 ```
 
@@ -462,6 +465,31 @@ It runs if and only if a subagent is running, since a finished agent's line carr
 The widget's rendered height is also bounded by the terminal's row count rather than a fixed ceiling: Pi's regular-mode differential renderer clears the screen and the scrollback whenever the first changed line sits above the previous viewport top, and the widget's spinner is that line on every tick, so a widget taller than the rows beneath it turns every tick into a destructive repaint ([#864]).
 The `/subagents:sessions` navigator reads messages via `Subagent.agentMessages` and subscribes to updates via `Subagent.subscribeToUpdates()` — no direct `AgentSession` reference (#277).
 It also reads the parent session's `subagents:record` entries (`persisted-record.ts`), so runs the manager no longer holds, such as those from before a `/reload`, open from their transcript file.
+
+The same entries make those runs resumable.
+Each entry takes the outcome from the run that ended and, from the agent as it is when the entry is written, what identifies and continues its transcript: the child's Pi `sessionId`, the `transcriptLeafId` its transcript last held, `providerWorkspace`, and the cumulative `toolUses`, `lifetimeUsage`, and `compactionCount`.
+`SubagentManager.startResume` falls back to its `ChildHistory` for an id it holds no record for, reads the child's last run and the latest turn budget any of its runs recorded (`readRestorableRun`), and rebuilds the record from them, with the transcript, its header, and its leaf as its `execution.transcript`.
+The restore refuses, without a record, a child whose transcript names another parent (`unknown-agent`); one whose transcript is missing, names a session other than the recorded one, or was recorded before entries carried that identity (`no-session`); one whose agent type, re-read from disk, is no longer defined or is disabled (`agent-type-unavailable`); and one whose run recorded a provider workspace, which the earlier manager's teardown disposed (`workspace-disposed`).
+The rebuilt record keeps the latest recorded turn ceiling (`turnBudget.maxTurns`, or unlimited when that budget named none); with no budget recorded at all it gets what a fresh spawn of its type would.
+
+The rebuilt record's first resume reopens the transcript through `createSubagentSession({ transcript })` rather than requiring a live session.
+The factory checks the transcript before any SDK session exists, so a file removed, cut back, or replaced since the restore fails that resume instead of running it on a blank, partial, or unrelated conversation.
+First it reads the file's header without writing (`readTranscriptHeader`), because Pi's `SessionManager.open` writes to some files it opens: it initialises an empty file with a new header and rewrites an older-format session as it migrates it.
+Only a file whose header still names the recorded session id, parent, and cwd is opened; the opened session manager must then name them too.
+Its raw entries are then walked from the leaf Pi would continue from, before Pi walks them itself: every parent must be an entry the file holds, the chain must end at a root without looping, and it must pass through the recorded leaf and hold a prompt and a reply.
+Pi's own walk stops silently at a missing parent, so a tail cut off by an entry lost from the middle would otherwise pass for the whole conversation, and it never returns from a loop.
+The raw entries, not Pi's projection, decide whether a conversation is there: a compaction replaces the earlier prompt with its summary in the projection, but keeps the entries.
+Nothing awaits between the read and the open, so no code in this process can change the file in between.
+The reopened session runs in the directory its transcript recorded, at the thinking level Pi restores, and on the model its branch selects by Pi's own rule (a virtual model's `model_change` holds over the physical replies routed under it).
+A selection, or a latest `model_change` route, that the parent's registry no longer has refuses the transcript rather than sending it to a fallback model.
+The agent definition is read afresh after the factory's last await before assembly (`SubagentSessionDeps.currentAgentConfig`), and assembly uses exactly that definition, so a type deleted or disabled while a queued resume waited is refused rather than resolved to `general-purpose`.
+Each entry records which definition the child's session was assembled under (`agentDefinition`: the file a project or global agent was read from, or `builtin`), and both the manager and the factory require the type to still be supplied by that definition: deleting a project file that overrode a global or built-in agent of the same name uncovers a definition with other tools, which is refused as `agent-type-unavailable`.
+The run that reopens the transcript holds the record until it reaches its turn loop or ends, so `resumeRefusal` reads `still-running` meanwhile even once that run is stopped: only one reopening is in flight.
+A session that arrives after the record was torn down is disposed on arrival rather than adopted.
+
+A session shutdown waits for every run it stopped to end, so each one's entry is in the parent session before Pi invalidates the extension, then leaves its notice.
+The notice names the resume call for each stopped agent that `Subagent.restorable` reads as one a later manager would restore: the entry its latest run is recorded as, read back as `readRestorableRun` reads it, is restorable and names no provider workspace (`isRestorableRecord`), and its live session's transcript holds a continuable conversation by the same raw-branch reading the factory applies on reopening (`SubagentSession.holdsContinuableTranscript`, `transcript-branch.ts`).
+Whether the agent's definition and model are still available is decided only when it is resumed.
 
 ## Cross-extension architecture
 

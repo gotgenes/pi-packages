@@ -9,10 +9,20 @@ import type { SessionContext } from "#src/types";
  * with mocked narrow interfaces.
  */
 
+/**
+ * A stopped agent as the shutdown sees it: what the notice reads, plus the
+ * promise of the run the abort stopped, which settles once that run's terminal
+ * transition has appended its `subagents:record` entry. A `Subagent` satisfies
+ * it structurally.
+ */
+export interface StoppedRun extends StoppedAgent {
+  readonly promise: Promise<void> | undefined;
+}
+
 /** Narrow manager interface — only the methods lifecycle handlers call. */
 export interface LifecycleManager {
   clearCompleted(): Promise<void>;
-  abortAll(): readonly StoppedAgent[];
+  abortAll(): readonly StoppedRun[];
   dispose(): Promise<void>;
 }
 
@@ -62,18 +72,27 @@ export class SessionLifecycleHandler {
   //    raise them: no parent run is active at shutdown, so a terminal
   //    transition delivers its nudge synchronously and Pi cannot recall it
   // 4. Abort all agents — stop running and queued work
-  // 5. Leave the shutdown notice — name what step 4 stopped, so neither the
-  //    user nor the parent waits for results that will not arrive. It starts
-  //    no turn, and a send that fails must not skip the disposal below.
-  // 6. Dispose manager — final cleanup, awaited so each child's extensions get
+  // 5. Wait for every stopped run to end — a running child's abort only pulls
+  //    its lever, and its record is appended once its turn loop has unwound,
+  //    which must happen before Pi invalidates this instance (#1152)
+  // 6. Leave the shutdown notice — name what step 4 stopped, so neither the
+  //    user nor the parent waits for results that will not arrive, and which
+  //    of them the parent can resume, read from the runs step 5 recorded. It
+  //    starts no turn, and a send that fails must not skip the disposal below.
+  // 7. Dispose manager — final cleanup, awaited so each child's extensions get
   //    their `session_shutdown` before Pi tears the parent down (#709)
   handleSessionShutdown(event: SessionShutdownPayload): Promise<void> {
     this.unpublishService();
     this.runtime.clearSessionContext();
     this.disposeNotifications();
     const stopped = this.manager.abortAll();
-    if (stopped.length > 0) this.sendShutdownNotice(event.reason, stopped);
-    return this.manager.dispose();
+    return this.finishShutdown(event.reason, stopped);
+  }
+
+  private async finishShutdown(reason: string | undefined, stopped: readonly StoppedRun[]): Promise<void> {
+    await Promise.allSettled(stopped.flatMap(run => run.promise ?? []));
+    if (stopped.length > 0) this.sendShutdownNotice(reason, stopped);
+    await this.manager.dispose();
   }
 
   private sendShutdownNotice(reason: string | undefined, stopped: readonly StoppedAgent[]): void {

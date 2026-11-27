@@ -2,7 +2,7 @@
  * The message a session shutdown leaves in the parent session when it stops
  * subagents. Pi cannot defer or cancel a shutdown, and the completion nudges
  * are silenced before the aborts, so without it the parent and the user never
- * learn that the work was lost.
+ * learn that the work was lost, or that some of it can be picked up again.
  */
 
 /** What the notice reads from each stopped agent; a `Subagent` satisfies it structurally. */
@@ -12,6 +12,11 @@ export interface StoppedAgent {
   readonly description: string;
   readonly stoppedWhileQueued: boolean;
   readonly outputFile: string | undefined;
+  /**
+   * Whether the parent session, continued after the shutdown, can resume the
+   * agent from the run it recorded. Read once that run has ended.
+   */
+  readonly restorable: boolean;
 }
 
 /** A displayed custom message, rendered by Pi's default custom-message component. */
@@ -39,13 +44,23 @@ export function buildShutdownNotice(reason: string | undefined, stopped: readonl
   const content = [
     `${cause} stopped these subagents before they finished, so their results will not arrive:`,
     ...stopped.map(describeStoppedAgent),
-    "Spawn them again if the work is still needed.",
+    ...nextSteps(stopped),
   ].join("\n");
   return { customType: "subagent-shutdown-notice", content, display: true };
 }
 
 function describeStoppedAgent(agent: StoppedAgent): string {
-  const state = agent.stoppedWhileQueued ? "was queued." : "was running.";
+  const was = agent.stoppedWhileQueued ? "was queued" : "was running";
+  const state = agent.restorable ? `${was}; resume it by calling subagent with resume: "${agent.id}".` : `${was}.`;
   const transcript = agent.outputFile === undefined ? "" : ` Transcript: \`${agent.outputFile}\``;
   return `- \`${agent.id}\` (${agent.type}) "${agent.description}": ${state}${transcript}`;
+}
+
+/** What the parent can do about the stopped agents: resume those it can, spawn the rest again. */
+function nextSteps(stopped: readonly StoppedAgent[]): string[] {
+  const resumable = stopped.filter((agent) => agent.restorable).length;
+  if (resumable === 0) return ["Spawn them again if the work is still needed."];
+  const resumed = "A resumed agent picks up its own conversation where it stopped.";
+  if (resumable === stopped.length) return [resumed];
+  return [resumed, "Spawn the others again if the work is still needed."];
 }

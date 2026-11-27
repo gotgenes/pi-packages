@@ -11,7 +11,7 @@
  */
 
 import type { Model } from "@earendil-works/pi-ai";
-import type { AgentConfigLookup } from "#src/config/agent-types";
+import { type AgentConfigLookup, definitionOf } from "#src/config/agent-types";
 import type { EnvInfo } from "#src/session/env";
 import type { ModelRegistry } from "#src/session/model-resolver";
 import type { ProjectContextLoader } from "#src/session/project-context";
@@ -109,6 +109,8 @@ export interface SessionConfig {
   thinkingLevel: ThinkingLevel | undefined;
   /** Per-agent configured max turns (from agentConfig.maxTurns). */
   agentMaxTurns: number | undefined;
+  /** Which definition the agent config came from (`definitionOf`), recorded so a later restore can require the same one. */
+  agentDefinition: string;
 }
 
 // ── Internal helpers ─────────────────────────────────────────────────────────
@@ -212,5 +214,6 @@ export function assembleSessionConfig(
     model,
     thinkingLevel,
     agentMaxTurns,
+    agentDefinition: definitionOf(agentConfig),
   };
 }

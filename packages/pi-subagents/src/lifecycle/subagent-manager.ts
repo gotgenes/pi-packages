@@ -11,6 +11,7 @@
 
 import { randomUUID } from "node:crypto";
 import type { Model } from "@earendil-works/pi-ai";
+import { definitionOf } from "#src/config/agent-types";
 import { type BackgroundRequest, resolveBackgroundMode } from "#src/config/invocation-config";
 import { debugLog } from "#src/debug";
 import type { ConcurrencyLimiter } from "#src/lifecycle/concurrency-limiter";
@@ -23,11 +24,20 @@ import {
   Subagent,
   type SubagentLifecycleObserver,
 } from "#src/lifecycle/subagent";
-import type { RunKind, RunOutcome } from "#src/lifecycle/subagent-run";
+import type { RunKind, RunOutcome, RunOutcomeInit } from "#src/lifecycle/subagent-run";
 import type { SubagentSession } from "#src/lifecycle/subagent-session";
+import { isActiveStatus, SubagentState } from "#src/lifecycle/subagent-state";
+import type { TurnBudget } from "#src/lifecycle/turn-limits";
 import type { WorkspaceProvider } from "#src/lifecycle/workspace";
-
+import {
+  type ChildRestoreRecord,
+  type PersistedRunSummary,
+  type RestorableRun,
+  readRestorableRun,
+  type SessionEntryLike,
+} from "#src/persisted-record";
 import type { RunConfig } from "#src/runtime";
+import type { ChildTranscriptHeader } from "#src/session/transcript-header";
 import type { AgentConfig, CompactionInfo, ParentSessionInfo, SubagentType, ThinkingLevel } from "#src/types";
 
 /**
@@ -38,15 +48,21 @@ export interface SpawnTypeResolver {
   resolveType(name: string): string | undefined;
   isValidType(type: string): boolean;
   resolveAgentConfig(type: string): AgentConfig;
+  /** The config a type names while it is defined and enabled, never a fallback. */
+  findEnabledConfig(type: string): AgentConfig | undefined;
+  /** Re-read the agent definitions from their source, as a restore does before it decides on a type. */
+  reload(): void;
 }
 
 /**
  * Why a resume was refused, across every front door.
  *
- * Widens the record's own vocabulary by the one refusal that is not a fact
- * about a record: an id no record answers to.
+ * Widens the record's own vocabulary by the refusals that are not facts about a
+ * record: an id no record answers to, and a settled child an earlier manager
+ * ran whose agent type is no longer defined, or is disabled, so restoring it
+ * would run it under a definition it never had.
  */
-export type ResumeRefusalReason = ResumeRefusal | "unknown-agent";
+export type ResumeRefusalReason = ResumeRefusal | "unknown-agent" | "agent-type-unavailable";
 
 /**
  * What a resume attempt produced: the record whose run was restarted, or the
@@ -171,6 +187,23 @@ export interface SubagentManagerObserver {
   onSubagentCreated(record: Subagent): void;
 }
 
+/**
+ * Where the manager looks for a settled child of the current parent session
+ * that it holds no record for: one an earlier manager ran, before a `/reload`
+ * or a restart replaced it. Read at the moment of a resume, never cached, so it
+ * always answers for whichever parent session is current.
+ */
+export interface ChildHistory {
+  /** The parent session's entries, which hold a `subagents:record` per finished run. */
+  entries(): readonly SessionEntryLike[];
+  /** The parent as it is now, which a reopened child is assembled against; undefined outside a session. */
+  snapshot(): ParentSnapshot | undefined;
+  /** The current parent session's identity, which a reopened child reports to lifecycle consumers. */
+  parentSession(): ParentSessionInfo;
+  /** The session id, spawning parent, and working directory a child transcript records, or undefined when it cannot be read. */
+  transcriptHeader(transcript: string): ChildTranscriptHeader | undefined;
+}
+
 export interface SubagentManagerOptions {
   /** Assembly factory that produces a born-complete SubagentSession per spawn. */
   createSubagentSession: (params: CreateSubagentSessionParams) => Promise<SubagentSession>;
@@ -184,6 +217,8 @@ export interface SubagentManagerOptions {
   observer?: SubagentManagerObserver;
   /** Agent registry, consulted to canonicalize a spawn's type and resolve its config. */
   registry: SpawnTypeResolver;
+  /** Where a resume finds a settled child an earlier manager ran; none restores nothing. */
+  history?: ChildHistory;
 }
 
 export interface AgentSpawnConfig {
@@ -224,6 +259,7 @@ export class SubagentManager {
   private getRunConfig?: () => RunConfig;
   private getRetentionPolicy?: () => RetentionPolicy;
   private readonly registry: SpawnTypeResolver;
+  private readonly history?: ChildHistory;
   private _workspaceProvider?: WorkspaceProvider;
 
   /** The registered workspace provider, or undefined when none is registered. */
@@ -239,6 +275,7 @@ export class SubagentManager {
     this.getRunConfig = options.getRunConfig;
     this.getRetentionPolicy = options.getRetentionPolicy;
     this.registry = options.registry;
+    this.history = options.history;
     // Periodically release the heavy session of terminal agents past their
     // retention window. The lightweight record (with its result) is kept for the
     // session lifetime, so get_subagent_result never misses in-session.
@@ -264,7 +301,7 @@ export class SubagentManager {
   }
 
   /** Compose a per-agent lifecycle observer from manager and spawn-config concerns. */
-  private buildObserver(options: AgentSpawnConfig): SubagentLifecycleObserver {
+  private buildObserver(options: Pick<AgentSpawnConfig, "observer">): SubagentLifecycleObserver {
     return {
       onRunStarted: (agent, kind) => {
         try { this.observer?.onSubagentRunStarted(agent, kind); } catch (err) { debugLog("onSubagentRunStarted observer", err); }
@@ -424,8 +461,8 @@ export class SubagentManager {
    * spawn; a foreground one starts at once, like a foreground spawn.
    */
   startResume(id: string, prompt: string, options: ResumeCallOptions): ResumeStart {
-    const agent = this.agents.get(id);
-    if (!agent) return { kind: "refused", reason: "unknown-agent" };
+    const agent = this.agents.get(id) ?? this.restore(id);
+    if (typeof agent === "string") return { kind: "refused", reason: agent };
     const refusal = agent.resumeRefusal;
     if (refusal) return { kind: "refused", reason: refusal };
     // Each resume's caller decides who carries its outcome: the resume's run is
@@ -443,6 +480,84 @@ export class SubagentManager {
       options.background ? this.admitBackground : undefined,
     );
     return { kind: "started", record: agent };
+  }
+
+  /**
+   * Rebuild the record of a settled child this manager never ran, from what its
+   * parent session recorded, so a resume continues the child's own transcript
+   * under its original id. Registered only once it is resumable.
+   *
+   * The child is restored as the agent type it ran as, held to the turn limit
+   * it ran under, with the metrics it had accumulated. One whose type is gone
+   * or disabled is refused rather than run under another definition, and one
+   * that ran in a provider workspace is not restored: an earlier manager's
+   * teardown disposed every workspace it held.
+   */
+  private restore(id: string): Subagent | ResumeRefusalReason {
+    const source = this.findRestorable(id);
+    if (typeof source === "string") return source;
+    const { run, header, snapshot, parentSession } = source;
+    const record = new Subagent({
+      id,
+      type: source.type,
+      description: run.summary.description,
+      isBackground: false,
+      execution: {
+        createSubagentSession: this.createSubagentSession,
+        snapshot,
+        prompt: "",
+        baseCwd: this.baseCwd,
+        observer: this.buildObserver({}),
+        getRunConfig: this.getRunConfig,
+        getWorkspaceProvider: () => this._workspaceProvider,
+        maxTurns: restoredMaxTurns(run.turnBudget),
+        parentSession,
+        transcript: { file: run.outputFile, header, leafId: run.transcriptLeafId, agentDefinition: run.agentDefinition },
+      },
+      state: new SubagentState({
+        toolUses: run.summary.toolUses,
+        lifetimeUsage: run.lifetimeUsage,
+        compactionCount: run.compactionCount,
+      }),
+      outcome: restoredOutcome(run.summary),
+    });
+    this.agents.set(id, record);
+    return record;
+  }
+
+  /**
+   * What a restore continues the child `id` from, or why it is refused: an id
+   * the current parent session never recorded, or a fork's inherited child, is
+   * `unknown-agent`; a run with no transcript that is provably still the
+   * child's is `no-session`; then the agent type and the workspace decide.
+   */
+  private findRestorable(id: string): RestoreSource | ResumeRefusalReason {
+    const history = this.history;
+    const snapshot = history?.snapshot();
+    if (!history || !snapshot) return "unknown-agent";
+    const recorded = readRestorableRun(history.entries(), id);
+    if (recorded.kind === "unrecorded") return "unknown-agent";
+    const parentSession = history.parentSession();
+    const transcript = provenTranscript(recorded, history, parentSession.parentSessionId);
+    if (typeof transcript === "string") return transcript;
+    const type = this.restorableType(transcript.run.summary.type, transcript.run.agentDefinition);
+    if (type === undefined) return "agent-type-unavailable";
+    if (transcript.run.providerWorkspace) return "workspace-disposed";
+    return { ...transcript, type, snapshot, parentSession };
+  }
+
+  /**
+   * The canonical name of an agent type a child may still run as, read afresh
+   * from its source, or undefined when it is gone, disabled, or now supplied by
+   * another definition than the one the child ran under (`definition`). Every
+   * front door gets the same answer, whether or not anything else reloaded the
+   * registry.
+   */
+  private restorableType(type: string, definition: string): SubagentType | undefined {
+    this.registry.reload();
+    const canonical = this.registry.resolveType(type);
+    const config = canonical === undefined ? undefined : this.registry.findEnabledConfig(canonical);
+    return config && definitionOf(config) === definition ? canonical : undefined;
   }
 
   getRecord(id: string): Subagent | undefined {
@@ -572,4 +687,61 @@ export class SubagentManager {
     this.agents.clear();
     await Promise.allSettled(teardowns);
   }
+}
+
+/** A settled child a restore continues, and what it is continued against. */
+interface RestoreSource {
+  run: RestorableRun;
+  header: ChildTranscriptHeader;
+  type: SubagentType;
+  snapshot: ParentSnapshot;
+  parentSession: ParentSessionInfo;
+}
+
+/**
+ * The child's recorded run with the transcript header that proves its file is
+ * still the child's own, or why the transcript cannot be continued. A file
+ * naming another parent is a fork's inherited child (`unknown-agent`): forks
+ * inherit run entries, not ownership of the transcripts they name. A file that
+ * is missing, unreadable, or another session (a sibling's put in its place),
+ * and a run recorded before the session id was, are `no-session`: nothing shows
+ * the file is the child's.
+ */
+function provenTranscript(
+  recorded: Exclude<ChildRestoreRecord, { kind: "unrecorded" }>,
+  history: ChildHistory,
+  parentSessionId: string | undefined,
+): Pick<RestoreSource, "run" | "header"> | ResumeRefusalReason {
+  const file = recorded.kind === "restorable" ? recorded.run.outputFile : recorded.outputFile;
+  const header = file === undefined ? undefined : history.transcriptHeader(file);
+  if (header && header.parentSession !== parentSessionId) return "unknown-agent";
+  if (recorded.kind !== "restorable" || header?.id !== recorded.run.sessionId) return "no-session";
+  return { run: recorded.run, header };
+}
+
+/**
+ * The outcome a restored record starts from: its last run's, which the manager
+ * that ran it delivered. An entry describes the run that ended, so its status
+ * is terminal; one that reads active anyway is taken as stopped, so the
+ * restored record starts settled whatever the entry claims.
+ */
+function restoredOutcome(run: PersistedRunSummary): RunOutcomeInit {
+  return {
+    status: isActiveStatus(run.status) ? "stopped" : run.status,
+    stoppedWhileQueued: run.stoppedWhileQueued,
+    startedAt: run.startedAt,
+    completedAt: run.completedAt,
+    consumedAt: run.completedAt ?? run.startedAt,
+  };
+}
+
+/**
+ * The turn limit a restored child runs under: the ceiling its runs last
+ * recorded, or 0 — unlimited, over the agent's own and the run default — when
+ * that budget named none. When no run of it ever reached its turn loop there is
+ * no budget at all, and the child gets what a fresh spawn of its type would.
+ */
+function restoredMaxTurns(budget: TurnBudget | undefined): number | undefined {
+  if (budget === undefined) return undefined;
+  return budget.maxTurns ?? 0;
 }

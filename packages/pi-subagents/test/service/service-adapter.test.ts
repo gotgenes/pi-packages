@@ -198,6 +198,7 @@ function makeStubCtx(): SessionContext {
       getSessionFile: () => undefined,
       getSessionId: () => "stub-session",
       getBranch: () => [],
+      getEntries: () => [],
     },
   };
 }
