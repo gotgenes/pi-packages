@@ -158,7 +158,7 @@ export interface SubagentManagerObserver {
    * Optional: the widget has no use for it, and a hook nobody supplies is a
    * vacant one.
    */
-  onSubagentUpdate?(record: Subagent, message: string): void;
+  onSubagentUpdate?(record: Subagent, run: RunOutcome, message: string): void;
   /**
    * Fires when a teardown after the record's result was delivered reported
    * where its work went.
@@ -280,8 +280,8 @@ export class SubagentManager {
       onRunFinished: (agent, run) => {
         try { this.observer?.onSubagentRunFinished(agent, run); } catch (err) { debugLog("onSubagentRunFinished observer", err); }
       },
-      onUpdateSent: (agent, message) => {
-        this.observer?.onSubagentUpdate?.(agent, message);
+      onUpdateSent: (agent, run, message) => {
+        this.observer?.onSubagentUpdate?.(agent, run, message);
       },
       onWorkspaceNotice: (agent, notice) => {
         this.observer?.onSubagentWorkspaceNotice?.(agent, notice);

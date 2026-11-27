@@ -40,8 +40,8 @@ export interface SubagentLifecycleObserver {
 	 * so a reader takes that run's outcome rather than the agent's latest.
 	 */
 	onRunFinished?(agent: Subagent, run: RunOutcome): void;
-	/** Fires when the running agent sends its parent a mid-run message. */
-	onUpdateSent?(agent: Subagent, message: string): void;
+	/** Fires when the running agent sends its parent a mid-run message, naming the run it joined. */
+	onUpdateSent?(agent: Subagent, run: RunOutcome, message: string): void;
 	/**
 	 * Fires when a teardown after the agent's result was delivered reported where
 	 * its work went. Not fired for a failed run or resume: those reach a terminal
@@ -497,8 +497,9 @@ export class Subagent {
 	private announceUpdate(message: string): void {
 		// The session outlives this run, so an update joins whichever run is under
 		// way when the child sends it.
-		this.currentRun.recordUpdate(message);
-		this.execution.observer?.onUpdateSent?.(this, message);
+		const run = this.currentRun;
+		run.recordUpdate(message);
+		this.execution.observer?.onUpdateSent?.(this, run, message);
 	}
 
 	/**
@@ -656,10 +657,6 @@ export class Subagent {
 		this.currentRun.markConsumed(at);
 	}
 
-	/** The announcement channel delivered this update; no outcome carrier repeats it. */
-	markUpdateAnnounced(message: string): void {
-		this.currentRun.markUpdateAnnounced(message);
-	}
 
 	/**
 	 * A carrier has committed to delivering the current run's outcome; nothing

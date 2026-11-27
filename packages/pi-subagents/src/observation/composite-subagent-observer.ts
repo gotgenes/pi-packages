@@ -34,8 +34,8 @@ export class CompositeSubagentObserver implements SubagentManagerObserver {
     this.dispatch((o) => o.onSubagentRunFinished(record, run), "onSubagentRunFinished");
   }
 
-  onSubagentUpdate(record: Subagent, message: string): void {
-    this.dispatch((o) => o.onSubagentUpdate?.(record, message), "onSubagentUpdate");
+  onSubagentUpdate(record: Subagent, run: RunOutcome, message: string): void {
+    this.dispatch((o) => o.onSubagentUpdate?.(record, run, message), "onSubagentUpdate");
   }
 
   /**

@@ -362,7 +362,7 @@ describe("SubagentEventsObserver", () => {
 			const { observer, emit } = makeObserver();
 			const record = createTestSubagent({ id: "agent-1", type: "general-purpose", description: "do work" });
 
-			observer.onSubagentUpdate(record, "The bug is in the retry wrapper.");
+			observer.onSubagentUpdate(record, record.latestRun, "The bug is in the retry wrapper.");
 
 			expect(emit).toHaveBeenCalledExactlyOnceWith("subagents:update", {
 				id: "agent-1",
@@ -376,15 +376,16 @@ describe("SubagentEventsObserver", () => {
 			const { observer, notifications } = makeObserver();
 			const record = createTestSubagent({ id: "agent-1" });
 
-			observer.onSubagentUpdate(record, "Course change.");
+			observer.onSubagentUpdate(record, record.latestRun, "Course change.");
 
-			expect(notifications.sendUpdate).toHaveBeenCalledExactlyOnceWith(record, "Course change.");
+			expect(notifications.sendUpdate).toHaveBeenCalledExactlyOnceWith(record, record.latestRun, "Course change.");
 		});
 
 		it("persists nothing — an update is not an outcome to reconstruct history from", () => {
 			const { observer, appendEntry } = makeObserver();
 
-			observer.onSubagentUpdate(createTestSubagent(), "Course change.");
+			const record = createTestSubagent();
+			observer.onSubagentUpdate(record, record.latestRun, "Course change.");
 
 			expect(appendEntry).not.toHaveBeenCalled();
 		});

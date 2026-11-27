@@ -690,14 +690,14 @@ describe("NotificationManager", () => {
     describe("a running child's mid-run update", () => {
       it("is delivered immediately when the parent is idle", () => {
         const parent = makePiParent();
-        parent.manager.sendUpdate(createTestSubagent({ id: "live-1", status: "running" }), "Course change.");
+        parent.manager.sendUpdate(...withLatestRun(createTestSubagent({ id: "live-1", status: "running" })), "Course change.");
         expect(parent.deliveredToLlm).toHaveLength(1);
       });
 
       it("is withheld while the parent's run is active, then flushed", () => {
         const parent = makePiParent();
         parent.startRun();
-        parent.manager.sendUpdate(createTestSubagent({ id: "live-1", status: "running" }), "Course change.");
+        parent.manager.sendUpdate(...withLatestRun(createTestSubagent({ id: "live-1", status: "running" })), "Course change.");
         expect(parent.deliveredToLlm).toHaveLength(0);
         parent.settleRun();
         expect(parent.deliveredToLlm).toHaveLength(1);
@@ -706,7 +706,7 @@ describe("NotificationManager", () => {
       it("is dropped after dispose, like every other announcement", () => {
         const parent = makePiParent();
         parent.manager.dispose();
-        parent.manager.sendUpdate(createTestSubagent({ id: "live-1", status: "running" }), "Course change.");
+        parent.manager.sendUpdate(...withLatestRun(createTestSubagent({ id: "live-1", status: "running" })), "Course change.");
         expect(parent.deliveredToLlm).toHaveLength(0);
       });
 
@@ -727,8 +727,8 @@ describe("NotificationManager", () => {
         const parent = makePiParent();
         const record = createTestSubagent({ id: "live-1", status: "running" });
         parent.startRun();
-        parent.manager.sendUpdate(record, "First finding.");
-        parent.manager.sendUpdate(record, "Second finding.");
+        parent.manager.sendUpdate(record, record.latestRun, "First finding.");
+        parent.manager.sendUpdate(record, record.latestRun, "Second finding.");
         parent.settleRun();
         expect(parent.deliveredToLlm).toHaveLength(2);
       });
@@ -737,7 +737,7 @@ describe("NotificationManager", () => {
         const parent = makePiParent();
         const record = createTestSubagent({ id: "live-1", status: "running" });
         parent.startRun();
-        parent.manager.sendUpdate(record, "Course change.");
+        parent.manager.sendUpdate(record, record.latestRun, "Course change.");
         parent.manager.sendCompletion(record, record.latestRun);
         parent.settleRun();
         expect(parent.deliveredToLlm.map((c) => c.slice(0, 18))).toEqual([
@@ -751,7 +751,7 @@ describe("NotificationManager", () => {
         const record = createTestSubagent({ id: "live-1", status: "running" });
         record.markConsumed();
 
-        parent.manager.sendUpdate(record, "Course change.");
+        parent.manager.sendUpdate(record, record.latestRun, "Course change.");
 
         // Consumption records that the *outcome* was collected. An update is a
         // new fact, so the gate that silences a duplicate outcome does not apply.
@@ -763,7 +763,7 @@ describe("NotificationManager", () => {
         const record = createTestSubagent({ id: "live-1", status: "running" });
         record.claim();
 
-        parent.manager.sendUpdate(record, "Course change.");
+        parent.manager.sendUpdate(record, record.latestRun, "Course change.");
 
         // A claimed carrier is blocked awaiting this run, so an announcement
         // would arrive after its own return. It renders the update instead.
@@ -778,7 +778,7 @@ describe("NotificationManager", () => {
           runUpdates: ["Course change.", "A second finding."],
         });
 
-        parent.manager.sendUpdate(record, "Course change.");
+        parent.manager.sendUpdate(record, record.latestRun, "Course change.");
 
         expect(record.runUpdates).toEqual(["A second finding."]);
       });
@@ -788,7 +788,7 @@ describe("NotificationManager", () => {
         const record = createTestSubagent({ id: "live-1", status: "running" });
         record.claim().release();
 
-        parent.manager.sendUpdate(record, "Course change.");
+        parent.manager.sendUpdate(record, record.latestRun, "Course change.");
 
         expect(parent.deliveredToLlm).toHaveLength(1);
       });
@@ -798,7 +798,7 @@ describe("NotificationManager", () => {
         const record = liveChildThatSent("Course change.");
 
         parent.startRun();
-        parent.manager.sendUpdate(record, "Course change.");
+        parent.manager.sendUpdate(record, record.latestRun, "Course change.");
         parent.settleRun();
 
         // The affordance the block carries is true: the child is live, so the
@@ -815,7 +815,7 @@ describe("NotificationManager", () => {
         const record = liveChildThatSent("Course change.");
 
         parent.startRun();
-        parent.manager.sendUpdate(record, "Course change.");
+        parent.manager.sendUpdate(record, record.latestRun, "Course change.");
 
         // What get_subagent_result({ wait: true }) does: claim the outcome, wait
         // for it, then record the collection.
@@ -835,7 +835,7 @@ describe("NotificationManager", () => {
         const record = liveChildThatSent("Course change.");
 
         parent.startRun();
-        parent.manager.sendUpdate(record, "Course change.");
+        parent.manager.sendUpdate(record, record.latestRun, "Course change.");
 
         // get_subagent_result without wait claims nothing; it renders the run's
         // owed updates and marks the settled outcome collected.
@@ -851,7 +851,7 @@ describe("NotificationManager", () => {
         const record = liveChildThatSent("Course change.");
 
         parent.startRun();
-        parent.manager.sendUpdate(record, "Course change.");
+        parent.manager.sendUpdate(record, record.latestRun, "Course change.");
         record.markCompleted("Done.");
         parent.manager.sendCompletion(record, record.latestRun);
         parent.settleRun();
@@ -860,6 +860,52 @@ describe("NotificationManager", () => {
         expect(parent.deliveredToLlm[0]).toContain(
           "Updates this agent sent while it worked:\n\n  Course change.",
         );
+      });
+    });
+
+    describe("a withheld update whose run a resume replaced", () => {
+      /** A live child with a session that has sent one update during run A. */
+      function liveResumableChildThatSent(message: string) {
+        const record = createTestSubagent({
+          id: "live-1",
+          status: "running",
+          result: undefined,
+          completedAt: undefined,
+          runUpdates: [message],
+        });
+        const stub = createSubagentSessionStub();
+        record.subagentSession = toSubagentSession(stub);
+        return { record, stub };
+      }
+
+      it("is not announced as live progress after its run was collected and a resume started", () => {
+        const parent = makePiParent();
+        const agent = liveResumableChildThatSent("Progress from run A.");
+        parent.startRun();
+        parent.manager.sendUpdate(agent.record, agent.record.latestRun, "Progress from run A.");
+        agent.record.markCompleted("Run A result.");
+        // The collection renders what run A still owes, this update included.
+        expect(agent.record.runUpdates).toEqual(["Progress from run A."]);
+        agent.record.markConsumed();
+        resumeStillRunning(agent);
+
+        parent.settleRun();
+
+        expect(parent.deliveredToLlm).toEqual([]);
+      });
+
+      it("is dropped with its run's completion when nothing collected it before a resume started", () => {
+        const parent = makePiParent();
+        const agent = liveResumableChildThatSent("Progress from run A.");
+        parent.startRun();
+        parent.manager.sendUpdate(agent.record, agent.record.latestRun, "Progress from run A.");
+        agent.record.markCompleted("Run A result.");
+        parent.manager.sendCompletion(agent.record, agent.record.latestRun);
+        resumeStillRunning(agent);
+
+        parent.settleRun();
+
+        expect(parent.deliveredToLlm).toEqual([]);
       });
     });
   });

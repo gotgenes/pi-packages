@@ -77,12 +77,12 @@ export class SubagentEventsObserver implements SubagentManagerObserver {
 	 * persisted: the session entry reconstructs terminal outcomes, and this is
 	 * not one.
 	 */
-	onSubagentUpdate(record: Subagent, message: string): void {
+	onSubagentUpdate(record: Subagent, run: RunOutcome, message: string): void {
 		this.emit("subagents:update", {
 			...identityOf(record),
 			message,
 		});
-		this.notifications.sendUpdate(record, message);
+		this.notifications.sendUpdate(record, run, message);
 	}
 
 	/**

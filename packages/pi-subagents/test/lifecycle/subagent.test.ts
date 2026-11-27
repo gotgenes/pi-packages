@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { CreateSubagentSessionParams } from "#src/lifecycle/create-subagent-session";
 import { Subagent, type SubagentExecution, type SubagentLifecycleObserver } from "#src/lifecycle/subagent";
-import type { RunKind } from "#src/lifecycle/subagent-run";
+import type { RunKind, RunOutcome } from "#src/lifecycle/subagent-run";
 import { SubagentSession, type TurnLoopOptions, type TurnLoopResult } from "#src/lifecycle/subagent-session";
 import { SubagentState, type SubagentStatus } from "#src/lifecycle/subagent-state";
 import type { TurnBudget } from "#src/lifecycle/turn-limits";
@@ -1066,7 +1066,7 @@ describe("Subagent", () => {
 
 		it("reports a background child's update to the lifecycle observer", async () => {
 			const { factory, notify } = createFactory();
-			const onUpdateSent = vi.fn<(agent: Subagent, message: string) => void>();
+			const onUpdateSent = vi.fn<(agent: Subagent, run: RunOutcome, message: string) => void>();
 			const agent = createRunnableAgent({
 				createSubagentSession: factory,
 				isBackground: true,
@@ -1077,7 +1077,7 @@ describe("Subagent", () => {
 
 			notify("The bug is in the retry wrapper.");
 
-			expect(onUpdateSent).toHaveBeenCalledWith(agent, "The bug is in the retry wrapper.");
+			expect(onUpdateSent).toHaveBeenCalledWith(agent, agent.latestRun, "The bug is in the retry wrapper.");
 		});
 
 		it("gives a foreground child the same channel, since where its update lands is not its concern", async () => {
@@ -1125,7 +1125,7 @@ describe("Subagent", () => {
 
 			it("tells the observer either way, because the update is a fact about the run", async () => {
 				const { factory, notify } = createFactory();
-				const onUpdateSent = vi.fn<(agent: Subagent, message: string) => void>();
+				const onUpdateSent = vi.fn<(agent: Subagent, run: RunOutcome, message: string) => void>();
 				const agent = createRunnableAgent({
 					createSubagentSession: factory,
 					observer: { onUpdateSent },
@@ -1136,7 +1136,7 @@ describe("Subagent", () => {
 
 				notify("The bug is in the retry wrapper.");
 
-				expect(onUpdateSent).toHaveBeenCalledWith(agent, "The bug is in the retry wrapper.");
+				expect(onUpdateSent).toHaveBeenCalledWith(agent, agent.latestRun, "The bug is in the retry wrapper.");
 			});
 
 			it("keeps the channel live across a resume, whose parent is blocked awaiting it", async () => {

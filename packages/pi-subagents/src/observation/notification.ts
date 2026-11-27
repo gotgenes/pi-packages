@@ -198,7 +198,7 @@ export function buildEventData(record: Subagent, run: RunOutcome) {
 
 export interface NotificationSystem {
   sendCompletion: (record: Subagent, run: RunOutcome) => void;
-  sendUpdate: (record: Subagent, message: string) => void;
+  sendUpdate: (record: Subagent, run: RunOutcome, message: string) => void;
   sendWorkspaceNotice: (record: Subagent, notice: string) => void;
   dispose: () => void;
 }
@@ -227,7 +227,7 @@ export interface WorkspaceNoticeDetails {
  */
 type PendingAnnouncement =
   | { kind: "completion"; record: Subagent; run: RunOutcome }
-  | { kind: "update"; record: Subagent; message: string };
+  | { kind: "update"; record: Subagent; run: RunOutcome; message: string };
 
 export class NotificationManager implements NotificationSystem {
   // pi.sendMessage is fire-and-forget: while the parent's agent run is active,
@@ -306,15 +306,18 @@ export class NotificationManager implements NotificationSystem {
    * What is consulted is whether an announcement is still the right channel at
    * all — see `canAnnounceUpdate`. The disposal latch and the parent-run
    * withhold apply as they do to any announcement.
+   *
+   * `run` is the run the update joined, named rather than read off the record:
+   * a resume may replace it before a withheld update is flushed.
    */
-  sendUpdate(record: Subagent, message: string): void {
+  sendUpdate(record: Subagent, run: RunOutcome, message: string): void {
     if (this.disposed) return;
-    if (!this.canAnnounceUpdate(record)) return;
+    if (!this.canAnnounceUpdate(run)) return;
     if (this.parentRunActive) {
-      this.pending.push({ kind: "update", record, message });
+      this.pending.push({ kind: "update", record, run, message });
       return;
     }
-    this.emitUpdate(record, message);
+    this.emitUpdate(record, run, message);
   }
 
   /**
@@ -328,10 +331,12 @@ export class NotificationManager implements NotificationSystem {
    *
    * Consulted at enqueue and again at emit, because a run withheld for the
    * parent's turn can terminate or be claimed in between. That re-read is what
-   * keeps a `<subagent-update>` block's steering affordance true.
+   * keeps a `<subagent-update>` block's steering affordance true. It reads the
+   * run the update joined: a resume that replaced it is running, but cannot be
+   * steered on that run's behalf.
    */
-  private canAnnounceUpdate(record: Subagent): boolean {
-    return !record.claimed && record.isActive();
+  private canAnnounceUpdate(run: RunOutcome): boolean {
+    return !run.claimed && run.isActive();
   }
 
   /**
@@ -378,7 +383,7 @@ export class NotificationManager implements NotificationSystem {
     const withheld = this.pending.splice(0);
     for (const entry of withheld) {
       try {
-        if (entry.kind === "update") this.emitUpdate(entry.record, entry.message);
+        if (entry.kind === "update") this.emitUpdate(entry.record, entry.run, entry.message);
         else this.emitIndividualNudge(entry.record, entry.run);
       } catch (err) {
         debugLog("notification render", err);
@@ -392,11 +397,11 @@ export class NotificationManager implements NotificationSystem {
     this.pending.length = 0;
   }
 
-  private emitUpdate(record: Subagent, message: string): void {
-    if (!this.canAnnounceUpdate(record)) return;
+  private emitUpdate(record: Subagent, run: RunOutcome, message: string): void {
+    if (!this.canAnnounceUpdate(run)) return;
     // This channel is delivering the message, so no outcome carrier may repeat
-    // it — the record renders only what is still owed.
-    record.markUpdateAnnounced(message);
+    // it — the run renders only what is still owed.
+    run.markUpdateAnnounced(message);
     const details: UpdateDetails = {
       id: record.id,
       description: record.description,

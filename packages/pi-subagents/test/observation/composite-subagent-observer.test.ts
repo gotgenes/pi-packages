@@ -121,10 +121,10 @@ describe("CompositeSubagentObserver", () => {
 			const composite = new CompositeSubagentObserver([a, b]);
 			const record = createTestSubagent({ id: "agent-9" });
 
-			composite.onSubagentUpdate(record, "Course change.");
+			composite.onSubagentUpdate(record, record.latestRun, "Course change.");
 
-			expect(a.onSubagentUpdate).toHaveBeenCalledExactlyOnceWith(record, "Course change.");
-			expect(b.onSubagentUpdate).toHaveBeenCalledExactlyOnceWith(record, "Course change.");
+			expect(a.onSubagentUpdate).toHaveBeenCalledExactlyOnceWith(record, record.latestRun, "Course change.");
+			expect(b.onSubagentUpdate).toHaveBeenCalledExactlyOnceWith(record, record.latestRun, "Course change.");
 		});
 
 		it("skips a delegate that does not implement it, and still reaches the rest", () => {
@@ -133,8 +133,8 @@ describe("CompositeSubagentObserver", () => {
 			const composite = new CompositeSubagentObserver([widgetLike, listening]);
 			const record = createTestSubagent({ id: "agent-9" });
 
-			expect(() => composite.onSubagentUpdate(record, "Course change.")).not.toThrow();
-			expect(listening.onSubagentUpdate).toHaveBeenCalledExactlyOnceWith(record, "Course change.");
+			expect(() => composite.onSubagentUpdate(record, record.latestRun, "Course change.")).not.toThrow();
+			expect(listening.onSubagentUpdate).toHaveBeenCalledExactlyOnceWith(record, record.latestRun, "Course change.");
 		});
 
 		it("forwards onSubagentWorkspaceNotice to the delegates that implement it", () => {

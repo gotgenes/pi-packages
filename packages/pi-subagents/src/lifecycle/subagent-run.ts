@@ -60,6 +60,8 @@ export interface RunOutcome {
 	/** The parent has collected this outcome. */
 	readonly consumed: boolean;
 	isActive(): boolean;
+	/** The announcement channel delivered this update, so no outcome carrier repeats it. */
+	markUpdateAnnounced(message: string): void;
 	/** Terminated by error, harness turn-limit abort, or external stop. */
 	isTerminalError(): boolean;
 	markConsumed(at?: number): void;
