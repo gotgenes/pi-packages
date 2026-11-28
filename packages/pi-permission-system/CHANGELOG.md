@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [46.0.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v45.1.0...pi-permission-system-v46.0.0) (2026-11-28)
+
+
+### Features
+
+* **pi-permission-system:** **breaking:** stop looking for a config.json in the install directory ([9334e03](https://github.com/gotgenes/pi-packages/commit/9334e038fbaf5f6096642373689418fa04b40d40)), closes [#1126](https://github.com/gotgenes/pi-packages/issues/1126)
+* **pi-permission-system:** **breaking:** stop reading the legacy config files ([99a82c6](https://github.com/gotgenes/pi-packages/commit/99a82c6d6c50a664d86099641bb0938340626da7)), closes [#1126](https://github.com/gotgenes/pi-packages/issues/1126)
+
+### Bug Fixes
+
+* **pi-permission-system:** notice a legacy policy file once when Pi runs from the home directory ([c95f504](https://github.com/gotgenes/pi-packages/commit/c95f5048b2a1f879c768a81e870a6fcf3acfe28a)), closes [#1126](https://github.com/gotgenes/pi-packages/issues/1126)
+
+### Documentation
+
+* **pi-permission-system:** document the legacy config files no longer read ([6502af1](https://github.com/gotgenes/pi-packages/commit/6502af1250cddcb039ad505c5093069a8ad7f4ec))
+
 ## [45.1.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v45.0.0...pi-permission-system-v45.1.0) (2026-11-27)
 
 
