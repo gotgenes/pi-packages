@@ -4,7 +4,6 @@ import { mergeFlatPermissions } from "#src/policy/permission-merge";
 import type { FlatPermissionConfig, PatternValue } from "#src/types";
 import { isDenyWithReason, isPermissionState } from "#src/types";
 import {
-  type DeclarationScope,
   type DeclaredCommandEffects,
   foldDeclaredCommandEffects,
   NO_DECLARED_COMMAND_EFFECTS,
@@ -289,25 +288,25 @@ export interface MergedConfigResult {
   issues: string[];
 }
 
+/** Where a legacy-file notice sends the user to move its settings. */
+const LEGACY_FILES_GUIDE =
+  "https://github.com/gotgenes/pi-packages/blob/main/packages/pi-permission-system/docs/migration/legacy-to-flat.md#legacy-file-locations";
+
 /**
- * Load global and project configs from the new layout, detect legacy files,
- * merge everything, and collect issues.
+ * Load the global and project configs, merge them, and collect issues.
  *
- * Merge order:
- * 1. Legacy global policy (if present) — lowest precedence
- * 2. New global config
- * 3. Legacy project policy (if present)
- * 4. New project config — highest precedence
+ * The project config overrides the global one. Each `commandEffects` block is
+ * folded with its scope stamped into `MergedConfigResult.declaredCommandEffects`.
  *
- * Legacy files are detected and warned about. Their content is parsed with the
- * flat-format parser — legacy-format keys (defaultPolicy, tools, bash, etc.)
- * are not translated and contribute no permission rules.
+ * The legacy policy files (`pi-permissions.jsonc` in the agent directory and
+ * in `<cwd>/.pi/agent/`) are never read: each one present raises a notice
+ * saying so and where its settings belong.
  *
- * When `options.includeProjectScope` is `false`, the project-scope steps (3 and
- * 4) are skipped entirely — neither the legacy project policy nor the new
- * project config is read or merged. This gates project-local config on project
- * trust: an untrusted repository cannot loosen the operator's global policy
- * (#644). It defaults to `true`, preserving the trusted / caller-agnostic path.
+ * When `options.includeProjectScope` is `false`, the project scope is skipped
+ * entirely — neither the project config nor its legacy file is read or
+ * noticed. This gates project-local config on project trust: an untrusted
+ * repository cannot loosen the operator's global policy (#644). It defaults to
+ * `true`, preserving the trusted / caller-agnostic path.
  */
 export function loadAndMergeConfigs(
   agentDir: string,
@@ -323,64 +322,34 @@ export function loadAndMergeConfigs(
     agentDir,
     includeProjectScope ? cwd : undefined,
   );
-
-  // Start with empty
-  let merged: UnifiedPermissionConfig = {};
-  let declared = NO_DECLARED_COMMAND_EFFECTS;
-  const foldDeclared = (
-    config: UnifiedPermissionConfig,
-    scope: DeclarationScope,
-  ): void => {
-    declared = foldDeclaredCommandEffects(
-      declared,
-      config.commandEffects,
-      scope,
-    );
-  };
-
-  // 1. Legacy global policy
   if (legacy.global !== undefined) {
-    const legacyConfig = loadUnifiedConfig(legacy.global).config;
-    allIssues.push(
-      `Legacy global policy found at '${legacy.global}'. ` +
-        `Move it to '${newGlobalPath}':\n` +
-        `  mv '${legacy.global}' '${newGlobalPath}'`,
-    );
-    // Legacy files are migrated away; the move-it guidance above is the
-    // actionable signal, so strict-validation issues for them are suppressed.
-    merged = mergeUnifiedConfigs(merged, legacyConfig);
-    foldDeclared(legacyConfig, "global");
+    allIssues.push(legacyFileNotice(legacy.global, newGlobalPath));
+  }
+  if (legacy.project !== undefined) {
+    allIssues.push(legacyFileNotice(legacy.project, newProjectPath));
   }
 
-  // 2. New global config
   const globalResult = loadUnifiedConfig(newGlobalPath);
   allIssues.push(...globalResult.issues);
   const globalConfig = globalResult.config;
-  merged = mergeUnifiedConfigs(merged, globalConfig);
-  foldDeclared(globalConfig, "global");
 
-  // 3. Legacy project policy — skipped when the project scope is withheld.
-  if (legacy.project !== undefined) {
-    const legacyConfig = loadUnifiedConfig(legacy.project).config;
-    allIssues.push(
-      `Legacy project policy found at '${legacy.project}'. ` +
-        `Move it to '${newProjectPath}':\n` +
-        `  mv '${legacy.project}' '${newProjectPath}'`,
-    );
-    // See above: legacy-file validation issues are suppressed.
-    merged = mergeUnifiedConfigs(merged, legacyConfig);
-    foldDeclared(legacyConfig, "project");
-  }
-
-  // 4. New project config — skipped when the project scope is withheld, so an
-  // untrusted project contributes nothing and `project` reports empty.
+  // An untrusted project contributes nothing, and `project` reports empty.
   const projectResult = includeProjectScope
     ? loadUnifiedConfig(newProjectPath)
     : { config: {}, issues: [] };
   allIssues.push(...projectResult.issues);
   const projectConfig = projectResult.config;
-  merged = mergeUnifiedConfigs(merged, projectConfig);
-  foldDeclared(projectConfig, "project");
+
+  const merged = mergeUnifiedConfigs(globalConfig, projectConfig);
+  const declared = foldDeclaredCommandEffects(
+    foldDeclaredCommandEffects(
+      NO_DECLARED_COMMAND_EFFECTS,
+      globalConfig.commandEffects,
+      "global",
+    ),
+    projectConfig.commandEffects,
+    "project",
+  );
 
   const bashFallbackIssue = detectPermissiveBashFallback(merged.permission);
   if (bashFallbackIssue) allIssues.push(bashFallbackIssue);
@@ -427,6 +396,11 @@ export function findLegacyPolicyFiles(
     if (existsSync(projectPath)) found.project = projectPath;
   }
   return found;
+}
+
+/** The notice for a legacy file at `path`, whose settings belong in `replacement`. */
+function legacyFileNotice(path: string, replacement: string): string {
+  return `'${path}' is no longer read; move its settings to '${replacement}' — see ${LEGACY_FILES_GUIDE}`;
 }
 
 /**

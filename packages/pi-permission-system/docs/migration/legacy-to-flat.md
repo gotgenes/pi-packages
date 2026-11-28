@@ -9,6 +9,28 @@ The new format has a single `permission` key whose top-level entries map surface
 
 Runtime knobs (`debugLog`, `permissionReviewLog`, `yoloMode`) are **unchanged** and stay at the top level.
 
+## Legacy file locations
+
+The config once lived in three other places, and none of them is read anymore:
+
+| Legacy file                                        | Move its settings to                                      |
+| -------------------------------------------------- | --------------------------------------------------------- |
+| `~/.pi/agent/pi-permissions.jsonc`                 | `~/.pi/agent/extensions/pi-permission-system/config.json` |
+| `<cwd>/.pi/agent/pi-permissions.jsonc`             | `<cwd>/.pi/extensions/pi-permission-system/config.json`   |
+| `config.json` in the extension's install directory | `~/.pi/agent/extensions/pi-permission-system/config.json` |
+
+Each `pi-permissions.jsonc` file still present raises a notice at session start naming the file to move its settings to; the project one is noticed only in a trusted project.
+The install-directory file is no longer looked for.
+
+Whatever a legacy file set stops applying: its runtime knobs, its `commandEffects` declarations, and every other setting in it.
+No permission rule was ever read from these files, so no rule is lost, but two settings can loosen a gate when they disappear:
+
+- A `shellTools` entry stops routing its tool through your `bash` rules, so the tool is gated under its own name and a `bash` deny no longer reaches it.
+- An `authorizerChain` link stops running, so an ask it would have denied reaches you instead, or under auto-approve is approved.
+
+Copy each setting into the new file rather than moving the legacy file over it: a move overwrites any `config.json` already there.
+A file in the legacy format (`defaultPolicy`, `tools`, …) also needs the translation below, since config files are validated strictly and an unrecognized key rejects the whole file (see [strict-config-validation.md](strict-config-validation.md)).
+
 ## Checklist
 
 Go through each section below.

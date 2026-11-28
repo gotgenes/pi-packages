@@ -1044,53 +1044,97 @@ describe("loadAndMergeConfigs", () => {
     });
   });
 
-  it("detects legacy global policy and emits migration issue", () => {
-    writeLegacyGlobalPolicy({
-      defaultPolicy: { tools: "allow" },
-      tools: { read: "allow" },
-    });
-
-    const result = loadAndMergeConfigs(agentDir, cwd);
-    expect(result.issues).toHaveLength(1);
-    expect(result.issues[0]).toContain("pi-permissions.jsonc");
-    expect(result.issues[0]).toContain("extensions/pi-permission-system");
-    // Legacy file has no flat-format permission key — no rules extracted
-    expect(result.merged.permission).toBeUndefined();
-  });
-
-  it("detects legacy project policy and emits migration issue", () => {
-    writeLegacyProjectPolicy({
-      bash: { "git status": "allow" },
-    });
-
-    const result = loadAndMergeConfigs(agentDir, cwd);
-    expect(result.issues).toHaveLength(1);
-    expect(result.issues[0]).toContain(".pi/agent/pi-permissions.jsonc");
-    expect(result.issues[0]).toContain(".pi/extensions/pi-permission-system");
-    // Legacy file has no flat-format permission key — no rules extracted
-    expect(result.merged.permission).toBeUndefined();
-  });
-
   it("emits no issues when no legacy files exist and no new files exist", () => {
     const result = loadAndMergeConfigs(agentDir, cwd);
     expect(result.issues).toEqual([]);
   });
 
-  it("new-layout config takes precedence over legacy config at same scope", () => {
-    writeGlobal({
-      permission: { "*": "deny" },
-    });
-    writeLegacyGlobalPolicy({
-      permission: { "*": "allow" },
+  describe("legacy config files", () => {
+    const GUIDE =
+      "https://github.com/gotgenes/pi-packages/blob/main/packages/pi-permission-system/docs/migration/legacy-to-flat.md#legacy-file-locations";
+
+    function globalNotice(): string {
+      const legacy = join(agentDir, "pi-permissions.jsonc");
+      const replacement = join(
+        agentDir,
+        "extensions",
+        "pi-permission-system",
+        "config.json",
+      );
+      return `'${legacy}' is no longer read; move its settings to '${replacement}' — see ${GUIDE}`;
+    }
+
+    function projectNotice(): string {
+      const legacy = join(cwd, ".pi", "agent", "pi-permissions.jsonc");
+      const replacement = join(
+        cwd,
+        ".pi",
+        "extensions",
+        "pi-permission-system",
+        "config.json",
+      );
+      return `'${legacy}' is no longer read; move its settings to '${replacement}' — see ${GUIDE}`;
+    }
+
+    it("reads nothing from a global legacy file, and notices it", () => {
+      writeLegacyGlobalPolicy({
+        debugLog: true,
+        commandEffects: { strings: { effects: "read" } },
+        permission: { "*": "ask" },
+      });
+
+      const result = loadAndMergeConfigs(agentDir, cwd);
+
+      expect(result.issues).toEqual([globalNotice()]);
+      expect(result.merged).toStrictEqual({});
+      expect(result.declaredCommandEffects).toStrictEqual({});
     });
 
-    const result = loadAndMergeConfigs(agentDir, cwd);
-    // New layout wins (legacy loaded first, new layout loaded second → new wins)
-    expect(result.merged.permission).toEqual({ "*": "deny" });
-    // But legacy still emits a migration warning
-    expect(result.issues.some((i) => i.includes("pi-permissions.jsonc"))).toBe(
-      true,
-    );
+    it("reads nothing from a trusted project's legacy file, and notices it", () => {
+      writeLegacyProjectPolicy({
+        permissionReviewLog: false,
+        commandEffects: { git: { effects: "read" } },
+        permission: { "*": "ask" },
+      });
+
+      const result = loadAndMergeConfigs(agentDir, cwd);
+
+      expect(result.issues).toEqual([projectNotice()]);
+      expect(result.merged).toStrictEqual({});
+      expect(result.declaredCommandEffects).toStrictEqual({});
+    });
+
+    it("says nothing about an untrusted project's legacy file", () => {
+      writeLegacyProjectPolicy({ debugLog: true });
+
+      const result = loadAndMergeConfigs(agentDir, cwd, {
+        includeProjectScope: false,
+      });
+
+      expect(result.issues).toEqual([]);
+      expect(result.merged).toStrictEqual({});
+    });
+
+    it("only notices a legacy-format file, raising no validation issue", () => {
+      writeLegacyGlobalPolicy({
+        defaultPolicy: { tools: "allow" },
+        tools: { read: "allow" },
+      });
+
+      const result = loadAndMergeConfigs(agentDir, cwd);
+
+      expect(result.issues).toEqual([globalNotice()]);
+    });
+
+    it("applies the new-layout file beside a legacy one, and notices the legacy one", () => {
+      writeGlobal({ debugLog: false });
+      writeLegacyGlobalPolicy({ debugLog: true });
+
+      const result = loadAndMergeConfigs(agentDir, cwd);
+
+      expect(result.merged).toStrictEqual({ debugLog: false });
+      expect(result.issues).toEqual([globalNotice()]);
+    });
   });
 
   it("warns when the merged config leaves bash inheriting a permissive top-level '*'", () => {
@@ -1155,20 +1199,6 @@ describe("loadAndMergeConfigs", () => {
       expect(result.project).toEqual({});
     });
 
-    it("omits the legacy project policy when includeProjectScope is false", () => {
-      writeGlobal({ permission: { "*": "ask" } });
-      writeLegacyProjectPolicy({ permission: { "*": "allow" } });
-
-      const result = loadAndMergeConfigs(agentDir, cwd, {
-        includeProjectScope: false,
-      });
-
-      expect(result.merged.permission).toEqual({ "*": "ask" });
-      expect(
-        result.issues.some((i) => i.includes("pi-permissions.jsonc")),
-      ).toBe(false);
-    });
-
     it("includes the project config when includeProjectScope is true", () => {
       writeGlobal({ permission: { "*": "ask", bash: "deny" } });
       writeProject({ permission: { bash: "allow" } });
@@ -1209,22 +1239,6 @@ describe("loadAndMergeConfigs", () => {
         officecli: { scope: "global", entry: { effects: [] } },
       });
       expect(result.issues).toEqual([]);
-    });
-
-    it("counts the legacy files toward their own scopes", () => {
-      writeLegacyGlobalPolicy({
-        commandEffects: { strings: { effects: "read" } },
-      });
-      writeLegacyProjectPolicy({
-        commandEffects: { git: { effects: "read" } },
-      });
-
-      const result = loadAndMergeConfigs(agentDir, cwd);
-
-      expect(result.declaredCommandEffects).toEqual({
-        strings: { scope: "global", entry: { effects: "read" } },
-        git: { scope: "project", entry: { effects: "read" } },
-      });
     });
 
     it("loads no project declaration when the project scope is withheld", () => {
