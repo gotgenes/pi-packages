@@ -530,23 +530,33 @@ describe("ConfigStore", () => {
       );
       const { store } = makeStore();
       store.logResolvedPaths("/some/project");
-      expect(mockBuildResolvedConfigLogEntry).toHaveBeenCalledWith(
-        expect.objectContaining({
-          legacyGlobalPolicyDetected: true,
-          legacyProjectPolicyDetected: false,
-        }),
-      );
+      expect(mockBuildResolvedConfigLogEntry).toHaveBeenCalledWith({
+        policyPaths: makePolicyPathProvider().getResolvedPolicyPaths(),
+        legacyGlobalPolicyDetected: true,
+        legacyProjectPolicyDetected: false,
+      });
+    });
+
+    it("reports a legacy project policy file found under the given cwd", () => {
+      const cwd = fixture.dir("config-store-project-");
+      fixture.file(join(cwd, ".pi", "agent"), "pi-permissions.jsonc", "{}");
+      const { store } = makeStore();
+      store.logResolvedPaths(cwd);
+      expect(mockBuildResolvedConfigLogEntry).toHaveBeenCalledWith({
+        policyPaths: makePolicyPathProvider().getResolvedPolicyPaths(),
+        legacyGlobalPolicyDetected: false,
+        legacyProjectPolicyDetected: true,
+      });
     });
 
     it("reports no legacy project policy when no cwd is provided", () => {
       const { store } = makeStore();
       store.logResolvedPaths();
-      expect(mockBuildResolvedConfigLogEntry).toHaveBeenCalledWith(
-        expect.objectContaining({
-          legacyGlobalPolicyDetected: false,
-          legacyProjectPolicyDetected: false,
-        }),
-      );
+      expect(mockBuildResolvedConfigLogEntry).toHaveBeenCalledWith({
+        policyPaths: makePolicyPathProvider().getResolvedPolicyPaths(),
+        legacyGlobalPolicyDetected: false,
+        legacyProjectPolicyDetected: false,
+      });
     });
   });
 });

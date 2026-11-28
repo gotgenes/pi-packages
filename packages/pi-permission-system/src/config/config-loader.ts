@@ -319,8 +319,10 @@ export function loadAndMergeConfigs(
 
   const newGlobalPath = getGlobalConfigPath(agentDir);
   const newProjectPath = getProjectConfigPath(cwd);
-  const legacyGlobalPolicyPath = getLegacyGlobalPolicyPath(agentDir);
-  const legacyProjectPolicyPath = getLegacyProjectPolicyPath(cwd);
+  const legacy = findLegacyPolicyFiles(
+    agentDir,
+    includeProjectScope ? cwd : undefined,
+  );
 
   // Start with empty
   let merged: UnifiedPermissionConfig = {};
@@ -337,17 +339,17 @@ export function loadAndMergeConfigs(
   };
 
   // 1. Legacy global policy
-  if (existsSync(legacyGlobalPolicyPath)) {
-    const legacy = loadUnifiedConfig(legacyGlobalPolicyPath);
+  if (legacy.global !== undefined) {
+    const legacyConfig = loadUnifiedConfig(legacy.global).config;
     allIssues.push(
-      `Legacy global policy found at '${legacyGlobalPolicyPath}'. ` +
+      `Legacy global policy found at '${legacy.global}'. ` +
         `Move it to '${newGlobalPath}':\n` +
-        `  mv '${legacyGlobalPolicyPath}' '${newGlobalPath}'`,
+        `  mv '${legacy.global}' '${newGlobalPath}'`,
     );
     // Legacy files are migrated away; the move-it guidance above is the
     // actionable signal, so strict-validation issues for them are suppressed.
-    merged = mergeUnifiedConfigs(merged, legacy.config);
-    foldDeclared(legacy.config, "global");
+    merged = mergeUnifiedConfigs(merged, legacyConfig);
+    foldDeclared(legacyConfig, "global");
   }
 
   // 2. New global config
@@ -358,16 +360,16 @@ export function loadAndMergeConfigs(
   foldDeclared(globalConfig, "global");
 
   // 3. Legacy project policy — skipped when the project scope is withheld.
-  if (includeProjectScope && existsSync(legacyProjectPolicyPath)) {
-    const legacy = loadUnifiedConfig(legacyProjectPolicyPath);
+  if (legacy.project !== undefined) {
+    const legacyConfig = loadUnifiedConfig(legacy.project).config;
     allIssues.push(
-      `Legacy project policy found at '${legacyProjectPolicyPath}'. ` +
+      `Legacy project policy found at '${legacy.project}'. ` +
         `Move it to '${newProjectPath}':\n` +
-        `  mv '${legacyProjectPolicyPath}' '${newProjectPath}'`,
+        `  mv '${legacy.project}' '${newProjectPath}'`,
     );
     // See above: legacy-file validation issues are suppressed.
-    merged = mergeUnifiedConfigs(merged, legacy.config);
-    foldDeclared(legacy.config, "project");
+    merged = mergeUnifiedConfigs(merged, legacyConfig);
+    foldDeclared(legacyConfig, "project");
   }
 
   // 4. New project config — skipped when the project scope is withheld, so an
@@ -399,6 +401,32 @@ export function loadAndMergeConfigs(
     declaredCommandEffects: declared,
     issues: allIssues,
   };
+}
+
+/** The legacy policy files present on disk, by the scope each used to feed. */
+export interface LegacyPolicyFiles {
+  global?: string;
+  project?: string;
+}
+
+/**
+ * Find the legacy policy files that exist.
+ *
+ * The project file is looked for only under a non-empty `cwd`; the caller
+ * withholds `cwd` when the project scope is not to be consulted.
+ */
+export function findLegacyPolicyFiles(
+  agentDir: string,
+  cwd: string | undefined,
+): LegacyPolicyFiles {
+  const found: LegacyPolicyFiles = {};
+  const globalPath = getLegacyGlobalPolicyPath(agentDir);
+  if (existsSync(globalPath)) found.global = globalPath;
+  if (cwd) {
+    const projectPath = getLegacyProjectPolicyPath(cwd);
+    if (existsSync(projectPath)) found.project = projectPath;
+  }
+  return found;
 }
 
 /**

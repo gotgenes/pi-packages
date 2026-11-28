@@ -1,4 +1,3 @@
-import { existsSync } from "node:fs";
 import type { ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
 import type { DebugReviewLogger } from "#src/logging/session-logger";
 import {
@@ -9,12 +8,8 @@ import {
 } from "./command-effects-config";
 import { writeConfigValues } from "./config-file-writer";
 import type { ConfigIssueSource } from "./config-issue-reporter";
-import { loadAndMergeConfigs } from "./config-loader";
-import {
-  getGlobalConfigPath,
-  getLegacyGlobalPolicyPath,
-  getLegacyProjectPolicyPath,
-} from "./config-paths";
+import { findLegacyPolicyFiles, loadAndMergeConfigs } from "./config-loader";
+import { getGlobalConfigPath } from "./config-paths";
 import { buildResolvedConfigLogEntry } from "./config-reporter";
 import {
   DEFAULT_EXTENSION_CONFIG,
@@ -200,17 +195,11 @@ export class ConfigStore
    */
   logResolvedPaths(cwd?: string): void {
     const policyPaths = this.deps.policyPaths.getResolvedPolicyPaths();
-    const { agentDir } = this.deps;
-    const legacyGlobalPolicyDetected = existsSync(
-      getLegacyGlobalPolicyPath(agentDir),
-    );
-    const legacyProjectPolicyDetected = cwd
-      ? existsSync(getLegacyProjectPolicyPath(cwd))
-      : false;
+    const legacy = findLegacyPolicyFiles(this.deps.agentDir, cwd);
     const entry = buildResolvedConfigLogEntry({
       policyPaths,
-      legacyGlobalPolicyDetected,
-      legacyProjectPolicyDetected,
+      legacyGlobalPolicyDetected: legacy.global !== undefined,
+      legacyProjectPolicyDetected: legacy.project !== undefined,
     });
     this.deps.logger.review(
       "config.resolved",

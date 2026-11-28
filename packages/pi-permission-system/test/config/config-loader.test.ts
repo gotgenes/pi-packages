@@ -7,6 +7,7 @@ import {
   detectDeprecatedPreviewCaps,
   detectPermissiveBashFallback,
   detectUnusableDialogKeys,
+  findLegacyPolicyFiles,
   loadAndMergeConfigs,
   loadUnifiedConfig,
   mergeUnifiedConfigs,
@@ -922,6 +923,60 @@ describe("mergeUnifiedConfigs", () => {
 
     it.each(rows)("$key: stays absent when both omit it", ({ key }) => {
       expect(mergeUnifiedConfigs({}, {})).not.toHaveProperty(key);
+    });
+  });
+});
+
+describe("findLegacyPolicyFiles", () => {
+  let tempDir: string;
+  let agentDir: string;
+  let cwd: string;
+
+  beforeEach(() => {
+    tempDir = mkdtempSync(join(tmpdir(), "legacy-files-test-"));
+    agentDir = join(tempDir, "agent");
+    cwd = join(tempDir, "project");
+  });
+
+  afterEach(() => {
+    rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  function writeFile(dir: string, name: string): string {
+    mkdirSync(dir, { recursive: true });
+    const path = join(dir, name);
+    writeFileSync(path, "{}");
+    return path;
+  }
+
+  it("finds nothing when neither file exists", () => {
+    expect(findLegacyPolicyFiles(agentDir, cwd)).toStrictEqual({});
+  });
+
+  it("finds the global file alone", () => {
+    const global = writeFile(agentDir, "pi-permissions.jsonc");
+
+    expect(findLegacyPolicyFiles(agentDir, cwd)).toStrictEqual({ global });
+  });
+
+  it("finds both files", () => {
+    const global = writeFile(agentDir, "pi-permissions.jsonc");
+    const project = writeFile(
+      join(cwd, ".pi", "agent"),
+      "pi-permissions.jsonc",
+    );
+
+    expect(findLegacyPolicyFiles(agentDir, cwd)).toStrictEqual({
+      global,
+      project,
+    });
+  });
+
+  it("skips the project file when no cwd is given", () => {
+    const global = writeFile(agentDir, "pi-permissions.jsonc");
+
+    expect(findLegacyPolicyFiles(agentDir, undefined)).toStrictEqual({
+      global,
     });
   });
 });
