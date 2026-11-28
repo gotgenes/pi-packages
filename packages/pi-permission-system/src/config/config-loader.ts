@@ -197,83 +197,51 @@ function formatConfigIssues(error: ZodError): string[] {
 }
 
 /**
+ * Keys whose override replaces the base whole when the override sets them.
+ *
+ * The retired `yoloMode` is kept so its detector sees it. `permissionDialogKeys`
+ * is replaced whole rather than merged like `shellTools`: a key map is validated
+ * as a unit, so merging two individually valid maps could bind one character to
+ * two decisions with neither file's own validation able to see it, and dropping
+ * a base entry only restores a default letter.
+ */
+const OVERRIDE_WINS_KEYS = [
+  "debugLog",
+  "permissionReviewLog",
+  "yoloMode",
+  "doublePressToConfirm",
+  "forwardingTimeoutMs",
+  "promptTimeoutMs",
+  "promptMaxRows",
+  "promptFieldMaxWidth",
+  "reviewLogFieldMaxWidth",
+  "toolInputPreviewMaxLength",
+  "toolTextSummaryMaxLength",
+  "piInfrastructureReadPaths",
+  "authorizerChain",
+  "permissionDialogKeys",
+  "promptNotifications",
+] as const;
+
+/**
  * Merge two unified configs.
+ * - Each of {@link OVERRIDE_WINS_KEYS} takes the override's value when the
+ *   override sets it, and the base's otherwise; a key neither sets stays absent.
+ * - `shellTools` is shallow-merged by tool name.
  * - `permission` is merged by `mergeFlatPermissions` for the bash-ungated
  *   warning; the policy itself is composed per scope by the permission manager.
- * - Scalar fields (debugLog, permissionReviewLog, doublePressToConfirm, and the
- *   retired yoloMode, kept so its detector sees it) are replaced when
- *   present in the override.
- * - Array fields (piInfrastructureReadPaths) replace the base when present in
- *   the override (override-wins, same as scalars).
- * - `permissionDialogKeys` replaces the base map whole, unlike `shellTools`.
- * - `promptNotifications` replaces the base list whole, like the arrays.
  * - `commandEffects` is not merged here: its scope is load provenance the
  *   review log reports, so `loadAndMergeConfigs` folds it per layer with the
  *   scope stamped (`MergedConfigResult.declaredCommandEffects`).
  */
-// Scalar knobs merged by override-replaces-base; keep in sync with
-// PermissionSystemExtensionConfig booleans (debugLog, permissionReviewLog,
-// doublePressToConfirm), plus the retired yoloMode its detector reads.
 export function mergeUnifiedConfigs(
   base: UnifiedPermissionConfig,
   override: UnifiedPermissionConfig,
 ): UnifiedPermissionConfig {
   const merged: UnifiedPermissionConfig = {};
 
-  // Boolean scalars: override replaces base when defined
-  for (const key of [
-    "debugLog",
-    "permissionReviewLog",
-    "yoloMode",
-    "doublePressToConfirm",
-  ] as const) {
-    const value = override[key] ?? base[key];
-    if (value !== undefined) {
-      merged[key] = value;
-    }
-  }
-
-  // Number scalars: override replaces base when defined
-  for (const key of [
-    "forwardingTimeoutMs",
-    "promptTimeoutMs",
-    "promptMaxRows",
-    "promptFieldMaxWidth",
-    "reviewLogFieldMaxWidth",
-    "toolInputPreviewMaxLength",
-    "toolTextSummaryMaxLength",
-  ] as const) {
-    const value = override[key] ?? base[key];
-    if (value !== undefined) {
-      merged[key] = value;
-    }
-  }
-
-  // Array fields: override replaces base when defined
-  for (const key of ["piInfrastructureReadPaths", "authorizerChain"] as const) {
-    const value = override[key] ?? base[key];
-    if (value !== undefined) {
-      merged[key] = value;
-    }
-  }
-
-  // permissionDialogKeys: whole-object replacement. A key map is validated as
-  // a unit, so merging two individually valid maps could bind one character to
-  // two decisions with neither file's own validation able to see it. Dropping a
-  // base entry only restores a default letter, which is why this does not need
-  // the shellTools rule below.
-  const dialogKeys = override.permissionDialogKeys ?? base.permissionDialogKeys;
-  if (dialogKeys !== undefined) {
-    merged.permissionDialogKeys = dialogKeys;
-  }
-
-  // promptNotifications: override replaces base, as the string arrays above
-  // do; its own block because a union-keyed write in that loop would have to
-  // satisfy both element types at once.
-  const notifications =
-    override.promptNotifications ?? base.promptNotifications;
-  if (notifications !== undefined) {
-    merged.promptNotifications = notifications;
+  for (const key of OVERRIDE_WINS_KEYS) {
+    copyOverrideWins(merged, base, override, key);
   }
 
   // shellTools: shallow-merge by tool name so a project entry overrides a
@@ -301,6 +269,17 @@ export function mergeUnifiedConfigs(
   }
 
   return merged;
+}
+
+/** Copy `key` into `merged`, the override's value winning over the base's. */
+function copyOverrideWins<K extends keyof UnifiedPermissionConfig>(
+  merged: UnifiedPermissionConfig,
+  base: UnifiedPermissionConfig,
+  override: UnifiedPermissionConfig,
+  key: K,
+): void {
+  const value = override[key] ?? base[key];
+  if (value !== undefined) merged[key] = value;
 }
 
 export interface MergedConfigResult {
