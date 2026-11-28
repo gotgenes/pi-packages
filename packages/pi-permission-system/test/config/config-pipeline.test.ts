@@ -22,13 +22,11 @@ describe("config pipeline seam", () => {
   let tempDir: string;
   let agentDir: string;
   let cwd: string;
-  let extensionRoot: string;
 
   beforeEach(() => {
     tempDir = mkdtempSync(join(tmpdir(), "config-pipeline-test-"));
     agentDir = join(tempDir, "agent");
     cwd = join(tempDir, "project");
-    extensionRoot = join(tempDir, "ext");
   });
 
   afterEach(() => {
@@ -44,7 +42,7 @@ describe("config pipeline seam", () => {
   it("a runtime knob survives the full pipeline", () => {
     writeGlobal({ debugLog: true });
 
-    const mergeResult = loadAndMergeConfigs(agentDir, cwd, extensionRoot);
+    const mergeResult = loadAndMergeConfigs(agentDir, cwd);
     const config = normalizePermissionSystemConfig(mergeResult.merged);
 
     expect(config.debugLog).toBe(true);
@@ -56,7 +54,7 @@ describe("config pipeline seam", () => {
   it("a deprecated preview cap reaches the merge intermediate but not the runtime config", () => {
     writeGlobal({ toolInputPreviewMaxLength: 1000 });
 
-    const mergeResult = loadAndMergeConfigs(agentDir, cwd, extensionRoot);
+    const mergeResult = loadAndMergeConfigs(agentDir, cwd);
     const config = normalizePermissionSystemConfig(mergeResult.merged);
 
     expect(mergeResult.merged.toolInputPreviewMaxLength).toBe(1000);
@@ -66,7 +64,7 @@ describe("config pipeline seam", () => {
   it("dialog budget fields survive the full pipeline and resolve to a render budget", () => {
     writeGlobal({ promptMaxRows: 12, promptFieldMaxWidth: 80 });
 
-    const mergeResult = loadAndMergeConfigs(agentDir, cwd, extensionRoot);
+    const mergeResult = loadAndMergeConfigs(agentDir, cwd);
     const config = normalizePermissionSystemConfig(mergeResult.merged);
 
     expect(config.promptMaxRows).toBe(12);
@@ -78,7 +76,7 @@ describe("config pipeline seam", () => {
   });
 
   it("falls back to the default render budget when the config names neither field", () => {
-    const mergeResult = loadAndMergeConfigs(agentDir, cwd, extensionRoot);
+    const mergeResult = loadAndMergeConfigs(agentDir, cwd);
     const config = normalizePermissionSystemConfig(mergeResult.merged);
 
     expect(resolveRenderBudget(config)).toEqual(DEFAULT_RENDER_BUDGET);
@@ -87,7 +85,7 @@ describe("config pipeline seam", () => {
   it("a deprecated text-summary cap likewise stops at the merge intermediate", () => {
     writeGlobal({ toolTextSummaryMaxLength: 250 });
 
-    const mergeResult = loadAndMergeConfigs(agentDir, cwd, extensionRoot);
+    const mergeResult = loadAndMergeConfigs(agentDir, cwd);
     const config = normalizePermissionSystemConfig(mergeResult.merged);
 
     expect(mergeResult.merged.toolTextSummaryMaxLength).toBe(250);
@@ -103,14 +101,14 @@ describe("config pipeline seam", () => {
       JSON.stringify({ toolInputPreviewMaxLength: 500 }),
     );
 
-    const mergeResult = loadAndMergeConfigs(agentDir, cwd, extensionRoot);
+    const mergeResult = loadAndMergeConfigs(agentDir, cwd);
 
     expect(mergeResult.merged.toolInputPreviewMaxLength).toBe(500);
   });
 
   it("defaults apply when config file is absent", () => {
     // No config files written — agentDir and cwd directories don't exist.
-    const mergeResult = loadAndMergeConfigs(agentDir, cwd, extensionRoot);
+    const mergeResult = loadAndMergeConfigs(agentDir, cwd);
     const config = normalizePermissionSystemConfig(mergeResult.merged);
 
     expect(config.debugLog).toBe(false);

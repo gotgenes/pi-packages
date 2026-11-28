@@ -5,14 +5,12 @@ export interface ResolvedConfigLogEntry {
   scopes: ResolvedPolicyPaths;
   legacyGlobalPolicyDetected: boolean;
   legacyProjectPolicyDetected: boolean;
-  legacyExtensionConfigDetected: boolean;
 }
 
 export interface BuildResolvedConfigLogEntryOptions {
   policyPaths: ResolvedPolicyPaths;
   legacyGlobalPolicyDetected?: boolean;
   legacyProjectPolicyDetected?: boolean;
-  legacyExtensionConfigDetected?: boolean;
 }
 
 export function buildResolvedConfigLogEntry(
@@ -22,7 +20,5 @@ export function buildResolvedConfigLogEntry(
     scopes: options.policyPaths,
     legacyGlobalPolicyDetected: options.legacyGlobalPolicyDetected ?? false,
     legacyProjectPolicyDetected: options.legacyProjectPolicyDetected ?? false,
-    legacyExtensionConfigDetected:
-      options.legacyExtensionConfigDetected ?? false,
   };
 }

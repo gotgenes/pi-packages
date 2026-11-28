@@ -200,7 +200,6 @@ describe("ConfigStore", () => {
       expect(mockLoadAndMergeConfigs).toHaveBeenCalledWith(
         agentDir,
         "/my/project",
-        expect.any(String),
         { includeProjectScope: true },
       );
     });
@@ -211,7 +210,6 @@ describe("ConfigStore", () => {
       expect(mockLoadAndMergeConfigs).toHaveBeenCalledWith(
         agentDir,
         "/my/project",
-        expect.any(String),
         { includeProjectScope: false },
       );
     });
@@ -219,12 +217,9 @@ describe("ConfigStore", () => {
     it("uses empty string cwd when no cwd is provided", () => {
       const { store } = makeStore();
       store.refresh(undefined, true);
-      expect(mockLoadAndMergeConfigs).toHaveBeenCalledWith(
-        agentDir,
-        "",
-        expect.any(String),
-        { includeProjectScope: true },
-      );
+      expect(mockLoadAndMergeConfigs).toHaveBeenCalledWith(agentDir, "", {
+        includeProjectScope: true,
+      });
     });
 
     it("updates current() with normalized merged result", () => {
@@ -528,9 +523,6 @@ describe("ConfigStore", () => {
       expect(mockProvider.getResolvedPolicyPaths).toHaveBeenCalled();
     });
 
-    // The extension-config legacy path lives under the package's own install
-    // directory, which the test does not control, so only the two flags the
-    // fixture decides are asserted.
     it("reports a legacy global policy file found in the agent dir", () => {
       fixture.file(agentDir, "pi-permissions.jsonc", "{}");
       expect(getLegacyGlobalPolicyPath(agentDir)).toBe(

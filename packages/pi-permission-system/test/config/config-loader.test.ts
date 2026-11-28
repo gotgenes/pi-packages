@@ -930,13 +930,11 @@ describe("loadAndMergeConfigs", () => {
   let tempDir: string;
   let agentDir: string;
   let cwd: string;
-  let extensionRoot: string;
 
   beforeEach(() => {
     tempDir = mkdtempSync(join(tmpdir(), "config-merge-test-"));
     agentDir = join(tempDir, "agent");
     cwd = join(tempDir, "project");
-    extensionRoot = join(tempDir, "ext");
   });
 
   afterEach(() => {
@@ -969,11 +967,6 @@ describe("loadAndMergeConfigs", () => {
     writeFileSync(join(dir, "pi-permissions.jsonc"), JSON.stringify(content));
   }
 
-  function writeLegacyExtensionConfig(content: Record<string, unknown>): void {
-    mkdirSync(extensionRoot, { recursive: true });
-    writeFileSync(join(extensionRoot, "config.json"), JSON.stringify(content));
-  }
-
   it("merges global and project new-layout configs", () => {
     writeGlobal({
       debugLog: true,
@@ -983,7 +976,7 @@ describe("loadAndMergeConfigs", () => {
       permission: { "*": "allow", write: "deny" },
     });
 
-    const result = loadAndMergeConfigs(agentDir, cwd, extensionRoot);
+    const result = loadAndMergeConfigs(agentDir, cwd);
     // The merged config leaves a permissive top-level '*' with no bash '*' policy,
     // so the bash-fallback footgun warning is expected.
     expect(result.issues).toHaveLength(1);
@@ -1002,7 +995,7 @@ describe("loadAndMergeConfigs", () => {
       tools: { read: "allow" },
     });
 
-    const result = loadAndMergeConfigs(agentDir, cwd, extensionRoot);
+    const result = loadAndMergeConfigs(agentDir, cwd);
     expect(result.issues).toHaveLength(1);
     expect(result.issues[0]).toContain("pi-permissions.jsonc");
     expect(result.issues[0]).toContain("extensions/pi-permission-system");
@@ -1015,7 +1008,7 @@ describe("loadAndMergeConfigs", () => {
       bash: { "git status": "allow" },
     });
 
-    const result = loadAndMergeConfigs(agentDir, cwd, extensionRoot);
+    const result = loadAndMergeConfigs(agentDir, cwd);
     expect(result.issues).toHaveLength(1);
     expect(result.issues[0]).toContain(".pi/agent/pi-permissions.jsonc");
     expect(result.issues[0]).toContain(".pi/extensions/pi-permission-system");
@@ -1023,33 +1016,8 @@ describe("loadAndMergeConfigs", () => {
     expect(result.merged.permission).toBeUndefined();
   });
 
-  it("detects legacy extension runtime config and emits migration issue", () => {
-    writeLegacyExtensionConfig({
-      debugLog: true,
-      permissionReviewLog: false,
-    });
-
-    const result = loadAndMergeConfigs(agentDir, cwd, extensionRoot);
-    expect(result.issues).toHaveLength(1);
-    expect(result.issues[0]).toContain(extensionRoot);
-    expect(result.merged.debugLog).toBe(true);
-    expect(result.merged.permissionReviewLog).toBe(false);
-  });
-
-  it("does not emit legacy extension config issue when path equals new global path", () => {
-    const newGlobalDir = join(agentDir, "extensions", "pi-permission-system");
-    mkdirSync(newGlobalDir, { recursive: true });
-    writeFileSync(
-      join(newGlobalDir, "config.json"),
-      JSON.stringify({ debugLog: true }),
-    );
-
-    const result = loadAndMergeConfigs(agentDir, cwd, newGlobalDir);
-    expect(result.issues.filter((i) => i.includes("legacy"))).toHaveLength(0);
-  });
-
   it("emits no issues when no legacy files exist and no new files exist", () => {
-    const result = loadAndMergeConfigs(agentDir, cwd, extensionRoot);
+    const result = loadAndMergeConfigs(agentDir, cwd);
     expect(result.issues).toEqual([]);
   });
 
@@ -1061,7 +1029,7 @@ describe("loadAndMergeConfigs", () => {
       permission: { "*": "allow" },
     });
 
-    const result = loadAndMergeConfigs(agentDir, cwd, extensionRoot);
+    const result = loadAndMergeConfigs(agentDir, cwd);
     // New layout wins (legacy loaded first, new layout loaded second → new wins)
     expect(result.merged.permission).toEqual({ "*": "deny" });
     // But legacy still emits a migration warning
@@ -1075,7 +1043,7 @@ describe("loadAndMergeConfigs", () => {
       permission: { "*": "allow", read: "allow" },
     });
 
-    const result = loadAndMergeConfigs(agentDir, cwd, extensionRoot);
+    const result = loadAndMergeConfigs(agentDir, cwd);
     expect(result.issues.some((i) => i.includes("bash"))).toBe(true);
   });
 
@@ -1084,7 +1052,7 @@ describe("loadAndMergeConfigs", () => {
       permission: { "*": "allow", bash: { "*": "ask" } },
     });
 
-    const result = loadAndMergeConfigs(agentDir, cwd, extensionRoot);
+    const result = loadAndMergeConfigs(agentDir, cwd);
     expect(result.issues).toEqual([]);
   });
 
@@ -1095,7 +1063,7 @@ describe("loadAndMergeConfigs", () => {
     it("warns, without rejecting the file, when the global config sets it", () => {
       writeGlobal({ permission: { "*": "ask" }, yoloMode: true });
 
-      const result = loadAndMergeConfigs(agentDir, cwd, extensionRoot);
+      const result = loadAndMergeConfigs(agentDir, cwd);
 
       expect(result.issues).toEqual([RETIRED]);
       expect(result.global.permission).toEqual({ "*": "ask" });
@@ -1104,17 +1072,13 @@ describe("loadAndMergeConfigs", () => {
     it("warns when a trusted project's config sets it", () => {
       writeProject({ permission: { "*": "ask" }, yoloMode: false });
 
-      expect(loadAndMergeConfigs(agentDir, cwd, extensionRoot).issues).toEqual([
-        RETIRED,
-      ]);
+      expect(loadAndMergeConfigs(agentDir, cwd).issues).toEqual([RETIRED]);
     });
 
     it("says nothing when no config sets it", () => {
       writeGlobal({ permission: { "*": "ask" } });
 
-      expect(loadAndMergeConfigs(agentDir, cwd, extensionRoot).issues).toEqual(
-        [],
-      );
+      expect(loadAndMergeConfigs(agentDir, cwd).issues).toEqual([]);
     });
   });
 
@@ -1127,7 +1091,7 @@ describe("loadAndMergeConfigs", () => {
         permission: { bash: "allow" },
       });
 
-      const result = loadAndMergeConfigs(agentDir, cwd, extensionRoot, {
+      const result = loadAndMergeConfigs(agentDir, cwd, {
         includeProjectScope: false,
       });
 
@@ -1140,7 +1104,7 @@ describe("loadAndMergeConfigs", () => {
       writeGlobal({ permission: { "*": "ask" } });
       writeLegacyProjectPolicy({ permission: { "*": "allow" } });
 
-      const result = loadAndMergeConfigs(agentDir, cwd, extensionRoot, {
+      const result = loadAndMergeConfigs(agentDir, cwd, {
         includeProjectScope: false,
       });
 
@@ -1154,7 +1118,7 @@ describe("loadAndMergeConfigs", () => {
       writeGlobal({ permission: { "*": "ask", bash: "deny" } });
       writeProject({ permission: { bash: "allow" } });
 
-      const result = loadAndMergeConfigs(agentDir, cwd, extensionRoot, {
+      const result = loadAndMergeConfigs(agentDir, cwd, {
         includeProjectScope: true,
       });
 
@@ -1165,7 +1129,7 @@ describe("loadAndMergeConfigs", () => {
       writeGlobal({ permission: { "*": "ask", bash: "deny" } });
       writeProject({ permission: { bash: "allow" } });
 
-      const result = loadAndMergeConfigs(agentDir, cwd, extensionRoot);
+      const result = loadAndMergeConfigs(agentDir, cwd);
 
       expect(result.merged.permission).toEqual({ "*": "ask", bash: "allow" });
     });
@@ -1183,7 +1147,7 @@ describe("loadAndMergeConfigs", () => {
         commandEffects: { git: { subcommands: { status: "read" } } },
       });
 
-      const result = loadAndMergeConfigs(agentDir, cwd, extensionRoot);
+      const result = loadAndMergeConfigs(agentDir, cwd);
 
       expect(result.declaredCommandEffects).toEqual({
         git: { scope: "project", entry: { subcommands: { status: "read" } } },
@@ -1200,7 +1164,7 @@ describe("loadAndMergeConfigs", () => {
         commandEffects: { git: { effects: "read" } },
       });
 
-      const result = loadAndMergeConfigs(agentDir, cwd, extensionRoot);
+      const result = loadAndMergeConfigs(agentDir, cwd);
 
       expect(result.declaredCommandEffects).toEqual({
         strings: { scope: "global", entry: { effects: "read" } },
@@ -1213,7 +1177,7 @@ describe("loadAndMergeConfigs", () => {
       writeProject({ commandEffects: { rm: { effects: [] } } });
       writeLegacyProjectPolicy({ commandEffects: { mv: { effects: [] } } });
 
-      const result = loadAndMergeConfigs(agentDir, cwd, extensionRoot, {
+      const result = loadAndMergeConfigs(agentDir, cwd, {
         includeProjectScope: false,
       });
 
@@ -1225,7 +1189,7 @@ describe("loadAndMergeConfigs", () => {
     it("keeps declarations out of the merged config, which holds no scope", () => {
       writeGlobal({ commandEffects: { strings: { effects: "read" } } });
 
-      const result = loadAndMergeConfigs(agentDir, cwd, extensionRoot);
+      const result = loadAndMergeConfigs(agentDir, cwd);
 
       expect(result.merged).toEqual({});
     });
@@ -1238,7 +1202,7 @@ describe("loadAndMergeConfigs", () => {
         toolInputPreviewMaxLength: 400,
       });
 
-      const result = loadAndMergeConfigs(agentDir, cwd, extensionRoot);
+      const result = loadAndMergeConfigs(agentDir, cwd);
 
       expect(result.issues).toHaveLength(1);
       expect(result.issues[0]).toContain("toolInputPreviewMaxLength");
@@ -1250,7 +1214,7 @@ describe("loadAndMergeConfigs", () => {
         toolTextSummaryMaxLength: 120,
       });
 
-      const result = loadAndMergeConfigs(agentDir, cwd, extensionRoot);
+      const result = loadAndMergeConfigs(agentDir, cwd);
 
       expect(result.merged.permission).toEqual({ "*": "ask", bash: "deny" });
     });
@@ -1258,7 +1222,7 @@ describe("loadAndMergeConfigs", () => {
     it("stays silent when neither cap is set", () => {
       writeGlobal({ permission: { "*": "ask", bash: "deny" } });
 
-      const result = loadAndMergeConfigs(agentDir, cwd, extensionRoot);
+      const result = loadAndMergeConfigs(agentDir, cwd);
 
       expect(result.issues).toEqual([]);
     });

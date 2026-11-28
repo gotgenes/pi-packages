@@ -1,5 +1,4 @@
 import { existsSync, readFileSync } from "node:fs";
-import { normalize } from "node:path";
 import type { ZodError } from "zod";
 import { mergeFlatPermissions } from "#src/policy/permission-merge";
 import type { FlatPermissionConfig, PatternValue } from "#src/types";
@@ -12,7 +11,6 @@ import {
 } from "./command-effects-config";
 import {
   getGlobalConfigPath,
-  getLegacyExtensionConfigPath,
   getLegacyGlobalPolicyPath,
   getLegacyProjectPolicyPath,
   getProjectConfigPath,
@@ -297,17 +295,16 @@ export interface MergedConfigResult {
  *
  * Merge order:
  * 1. Legacy global policy (if present) — lowest precedence
- * 2. Legacy extension runtime config (if present and path differs from new global)
- * 3. New global config
- * 4. Legacy project policy (if present)
- * 5. New project config — highest precedence
+ * 2. New global config
+ * 3. Legacy project policy (if present)
+ * 4. New project config — highest precedence
  *
  * Legacy files are detected and warned about. Their content is parsed with the
  * flat-format parser — legacy-format keys (defaultPolicy, tools, bash, etc.)
  * are not translated and contribute no permission rules.
  *
- * When `options.includeProjectScope` is `false`, the project-scope steps (4 and
- * 5) are skipped entirely — neither the legacy project policy nor the new
+ * When `options.includeProjectScope` is `false`, the project-scope steps (3 and
+ * 4) are skipped entirely — neither the legacy project policy nor the new
  * project config is read or merged. This gates project-local config on project
  * trust: an untrusted repository cannot loosen the operator's global policy
  * (#644). It defaults to `true`, preserving the trusted / caller-agnostic path.
@@ -315,7 +312,6 @@ export interface MergedConfigResult {
 export function loadAndMergeConfigs(
   agentDir: string,
   cwd: string,
-  extensionRoot: string,
   options: { includeProjectScope?: boolean } = {},
 ): MergedConfigResult {
   const includeProjectScope = options.includeProjectScope !== false;
@@ -325,7 +321,6 @@ export function loadAndMergeConfigs(
   const newProjectPath = getProjectConfigPath(cwd);
   const legacyGlobalPolicyPath = getLegacyGlobalPolicyPath(agentDir);
   const legacyProjectPolicyPath = getLegacyProjectPolicyPath(cwd);
-  const legacyExtConfigPath = getLegacyExtensionConfigPath(extensionRoot);
 
   // Start with empty
   let merged: UnifiedPermissionConfig = {};
@@ -355,32 +350,14 @@ export function loadAndMergeConfigs(
     foldDeclared(legacy.config, "global");
   }
 
-  // 2. Legacy extension runtime config (only if different from new global path)
-  const normalizedLegacyExt = normalize(legacyExtConfigPath);
-  const normalizedNewGlobal = normalize(newGlobalPath);
-  if (
-    normalizedLegacyExt !== normalizedNewGlobal &&
-    existsSync(legacyExtConfigPath)
-  ) {
-    const legacy = loadUnifiedConfig(legacyExtConfigPath);
-    allIssues.push(
-      `Legacy extension config found at '${legacyExtConfigPath}'. ` +
-        `Move runtime settings to '${newGlobalPath}':\n` +
-        `  mv '${legacyExtConfigPath}' '${newGlobalPath}'`,
-    );
-    // See above: legacy-file validation issues are suppressed.
-    merged = mergeUnifiedConfigs(merged, legacy.config);
-    foldDeclared(legacy.config, "global");
-  }
-
-  // 3. New global config
+  // 2. New global config
   const globalResult = loadUnifiedConfig(newGlobalPath);
   allIssues.push(...globalResult.issues);
   const globalConfig = globalResult.config;
   merged = mergeUnifiedConfigs(merged, globalConfig);
   foldDeclared(globalConfig, "global");
 
-  // 4. Legacy project policy — skipped when the project scope is withheld.
+  // 3. Legacy project policy — skipped when the project scope is withheld.
   if (includeProjectScope && existsSync(legacyProjectPolicyPath)) {
     const legacy = loadUnifiedConfig(legacyProjectPolicyPath);
     allIssues.push(
@@ -393,7 +370,7 @@ export function loadAndMergeConfigs(
     foldDeclared(legacy.config, "project");
   }
 
-  // 5. New project config — skipped when the project scope is withheld, so an
+  // 4. New project config — skipped when the project scope is withheld, so an
   // untrusted project contributes nothing and `project` reports empty.
   const projectResult = includeProjectScope
     ? loadUnifiedConfig(newProjectPath)

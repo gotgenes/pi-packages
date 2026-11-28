@@ -28,20 +28,20 @@ describe("buildResolvedConfigLogEntry", () => {
       scopes: policyPaths,
       legacyGlobalPolicyDetected: false,
       legacyProjectPolicyDetected: false,
-      legacyExtensionConfigDetected: false,
     });
   });
 
   it("surfaces legacy detection flags", () => {
-    const result = buildResolvedConfigLogEntry({
-      policyPaths,
+    expect(
+      buildResolvedConfigLogEntry({
+        policyPaths,
+        legacyGlobalPolicyDetected: true,
+      }),
+    ).toStrictEqual({
+      scopes: policyPaths,
       legacyGlobalPolicyDetected: true,
-      legacyExtensionConfigDetected: true,
+      legacyProjectPolicyDetected: false,
     });
-
-    expect(result.legacyGlobalPolicyDetected).toBe(true);
-    expect(result.legacyProjectPolicyDetected).toBe(false);
-    expect(result.legacyExtensionConfigDetected).toBe(true);
   });
 });
 
@@ -99,6 +99,6 @@ describe("the config.resolved review-log entry", () => {
     expect(parsed).not.toHaveProperty("globalConfigPath");
     expect(parsed.legacyGlobalPolicyDetected).toBe(false);
     expect(parsed.legacyProjectPolicyDetected).toBe(false);
-    expect(parsed.legacyExtensionConfigDetected).toBe(false);
+    expect(parsed).not.toHaveProperty("legacyExtensionConfigDetected");
   });
 });

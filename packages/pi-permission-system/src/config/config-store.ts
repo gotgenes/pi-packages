@@ -1,5 +1,4 @@
 import { existsSync } from "node:fs";
-import { normalize } from "node:path";
 import type { ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
 import type { DebugReviewLogger } from "#src/logging/session-logger";
 import {
@@ -13,14 +12,12 @@ import type { ConfigIssueSource } from "./config-issue-reporter";
 import { loadAndMergeConfigs } from "./config-loader";
 import {
   getGlobalConfigPath,
-  getLegacyExtensionConfigPath,
   getLegacyGlobalPolicyPath,
   getLegacyProjectPolicyPath,
 } from "./config-paths";
 import { buildResolvedConfigLogEntry } from "./config-reporter";
 import {
   DEFAULT_EXTENSION_CONFIG,
-  EXTENSION_ROOT,
   normalizePermissionSystemConfig,
   type PermissionSystemExtensionConfig,
   type RuntimeKnobValues,
@@ -142,12 +139,9 @@ export class ConfigStore
    * questions about them.
    */
   refresh(cwd: string | undefined, projectTrusted: boolean): void {
-    const mergeResult = loadAndMergeConfigs(
-      this.deps.agentDir,
-      cwd ?? "",
-      EXTENSION_ROOT,
-      { includeProjectScope: projectTrusted },
-    );
+    const mergeResult = loadAndMergeConfigs(this.deps.agentDir, cwd ?? "", {
+      includeProjectScope: projectTrusted,
+    });
     const runtimeConfig = normalizePermissionSystemConfig(mergeResult.merged);
     this.config = runtimeConfig;
     this.declared = mergeResult.declaredCommandEffects;
@@ -213,16 +207,10 @@ export class ConfigStore
     const legacyProjectPolicyDetected = cwd
       ? existsSync(getLegacyProjectPolicyPath(cwd))
       : false;
-    const legacyExtConfigPath = getLegacyExtensionConfigPath(EXTENSION_ROOT);
-    const newGlobalPath = getGlobalConfigPath(agentDir);
-    const legacyExtensionConfigDetected =
-      normalize(legacyExtConfigPath) !== normalize(newGlobalPath) &&
-      existsSync(legacyExtConfigPath);
     const entry = buildResolvedConfigLogEntry({
       policyPaths,
       legacyGlobalPolicyDetected,
       legacyProjectPolicyDetected,
-      legacyExtensionConfigDetected,
     });
     this.deps.logger.review(
       "config.resolved",

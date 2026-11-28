@@ -1,6 +1,4 @@
 import { mkdirSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
 import {
   OWNER_ONLY_DIRECTORY_MODE,
   restrictExistingPathToOwner,
@@ -75,12 +73,6 @@ export function runtimeKnobValues(
     doublePressToConfirm: config.doublePressToConfirm,
   };
 }
-
-function resolveExtensionRoot(moduleUrl = import.meta.url): string {
-  return join(dirname(fileURLToPath(moduleUrl)), "..");
-}
-
-export const EXTENSION_ROOT = resolveExtensionRoot();
 
 const PERMISSION_POLICY_KEYS: ReadonlySet<string> = new Set([
   "defaultPolicy",

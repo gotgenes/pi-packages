@@ -41,7 +41,3 @@ export function getLegacyGlobalPolicyPath(agentDir: string): string {
 export function getLegacyProjectPolicyPath(cwd: string): string {
   return join(cwd, ".pi", "agent", "pi-permissions.jsonc");
 }
-
-export function getLegacyExtensionConfigPath(extensionRoot: string): string {
-  return join(extensionRoot, "config.json");
-}

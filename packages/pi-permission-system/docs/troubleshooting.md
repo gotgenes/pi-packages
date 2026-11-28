@@ -36,8 +36,7 @@ A `path` of `null` means the scope has no location, such as the project scopes w
     { "name": "project-agent", "path": "/…/my-project/.pi/agents", "exists": false }
   ],
   "legacyGlobalPolicyDetected": false,
-  "legacyProjectPolicyDetected": false,
-  "legacyExtensionConfigDetected": false
+  "legacyProjectPolicyDetected": false
 }
 ```
 

@@ -6,7 +6,6 @@ import {
   getGlobalConfigDir,
   getGlobalConfigPath,
   getGlobalLogsDir,
-  getLegacyExtensionConfigPath,
   getLegacyGlobalPolicyPath,
   getLegacyProjectPolicyPath,
   getProjectAgentsDir,
@@ -17,7 +16,6 @@ import {
 describe("config-paths", () => {
   const agentDir = "/home/user/.pi/agent";
   const cwd = "/projects/my-app";
-  const extensionRoot = "/opt/extensions/pi-permission-system";
 
   describe("new layout paths", () => {
     it("getGlobalConfigDir returns extensions/pi-permission-system under agentDir", () => {
@@ -59,12 +57,6 @@ describe("config-paths", () => {
     it("getLegacyProjectPolicyPath returns .pi/agent/pi-permissions.jsonc under cwd", () => {
       expect(getLegacyProjectPolicyPath(cwd)).toBe(
         join(cwd, ".pi", "agent", "pi-permissions.jsonc"),
-      );
-    });
-
-    it("getLegacyExtensionConfigPath returns config.json under extensionRoot", () => {
-      expect(getLegacyExtensionConfigPath(extensionRoot)).toBe(
-        join(extensionRoot, "config.json"),
       );
     });
   });
