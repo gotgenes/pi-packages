@@ -161,6 +161,15 @@ Third-party packages are maintained by their authors; review one before granting
 
 ## Upgrading
 
+### The major after 45.x — the legacy config files are no longer read
+
+`~/.pi/agent/pi-permissions.jsonc` and `<cwd>/.pi/agent/pi-permissions.jsonc` are no longer read, and a `config.json` in the extension's install directory is no longer looked for.
+Each `pi-permissions.jsonc` file still present raises a notice at session start naming the `config.json` its settings belong in; a project's file is noticed only once the project is trusted.
+
+Whatever such a file set stops applying: runtime knobs and `commandEffects` declarations included.
+No permission rule was ever read from these files, but two settings can loosen a gate when lost: a `shellTools` entry stops routing its tool through your `bash` rules, and an `authorizerChain` link stops running.
+Copy each setting into the new file; see [Legacy file locations](docs/migration/legacy-to-flat.md#legacy-file-locations).
+
 ### The major after 44.x — auto-approve replaces yolo
 
 The `yoloMode` config key is no longer read, and a config that still sets it is warned.
@@ -266,7 +275,7 @@ Approve-and-steer, edit diffs, and risk explanations → a downstream package ov
 | [docs/guides/permission-frontmatter-for-subagent-extensions.md](docs/guides/permission-frontmatter-for-subagent-extensions.md) | Convention guide for subagent extension authors                                                                                                |
 | [docs/opencode-compatibility.md](docs/opencode-compatibility.md)                                                               | OpenCode compatibility — shared concepts, divergences, porting guide                                                                           |
 | [docs/troubleshooting.md](docs/troubleshooting.md)                                                                             | Common issues, diagnostic logging, threat model                                                                                                |
-| [docs/migration/legacy-to-flat.md](docs/migration/legacy-to-flat.md)                                                           | Migration from pre-v2 config layout                                                                                                            |
+| [docs/migration/legacy-to-flat.md](docs/migration/legacy-to-flat.md)                                                           | Migration from pre-v2 config layout, and the legacy file locations no longer read                                                              |
 | [docs/migration/strict-config-validation.md](docs/migration/strict-config-validation.md)                                       | Strict config validation (breaking) — rejected configs, and the cross-scope fail-closed clamp                                                  |
 | [docs/migration/0644-project-trust-gating.md](docs/migration/0644-project-trust-gating.md)                                     | Project-trust gating (breaking) — project config loads only after project trust                                                                |
 | [docs/migration/0745-prompt-payload-contracts.md](docs/migration/0745-prompt-payload-contracts.md)                             | Prompt payload contracts (breaking) — the forwarded wire, the `ui_prompt` broadcast, and the deprecated preview caps                           |

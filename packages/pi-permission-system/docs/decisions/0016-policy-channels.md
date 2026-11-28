@@ -1,6 +1,7 @@
 ---
 status: accepted
 date: 2026-11-16
+amended: 2026-11-28
 ---
 
 # 0016 — Which channels permission policy may enter through
@@ -12,6 +13,7 @@ This decision settles every path by which something that changes a check's outco
 It answers the handoff in ADR 0013 §9 (`docs/decisions/0013-permission-policy-model.md`) and the agent-frontmatter question its §7 left open, changing neither; it amends ADR 0007 (the envelope's cap becomes liftable, §5) and ADR 0012 decision 1 (one in-process mode fact, §6), and each of those records carries a dated entry pointing here.
 It was settled interactively in [#799], in the pattern of ADR 0007, 0011, and 0012: the operator decided at each gate, and each section below records the rejected alternatives beside the decision.
 The decisions are implemented by downstream issues (§ Disposition map); nothing changes in code with this record.
+Amended 2026-11-28 under §3: the install-directory legacy file is no longer detected, and two lost knobs can loosen a gate ([#1126]).
 
 ## Context
 
@@ -146,6 +148,16 @@ Runtime relaxations are not slots: auto-approve is a terminal (§5) and unrestri
   4. dynamic relief goes through the authorizer chain (live, per ask, never persisted, envelope-bounded), never through a rule source.
 
   The line is recorded versus live authority (ADR 0007), not human versus code: an extension is fully trusted code, so the boundary protects operator attention, not capability.
+
+#### Amendment (2026-11-28, [#1126]): the install-directory file is not detected
+
+§3 kept the detection of all three legacy files.
+The install-directory `config.json` had not been detected at its real location since 31.1.1: the root it was derived from resolved to `<install dir>/src` once the configuration modules moved under `src/config/`, so the lookup was `<install dir>/src/config.json`.
+Its detection is dropped rather than repaired, along with its `config.resolved` log flag; the two `pi-permissions.jsonc` files are still detected and noticed.
+
+"No deny is lost" holds for rules, which never reached the enforced policy from these files, but not for every knob.
+A legacy `shellTools` entry routed its tool through the `bash` rules, and a legacy `authorizerChain` link could deny an ask that auto-approve would otherwise approve; either stops applying with its file.
+`docs/migration/legacy-to-flat.md#legacy-file-locations`, which each file's notice links, says so; the files are still not read to find out.
 
 ### 4. Write-back
 
