@@ -60,3 +60,18 @@ The pre-completion reviewer returned WARN, WARN, WARN, then PASS on the fourth r
   - `copyOverrideWins` writes into its caller's local `merged`;
   - a filesystem reporting `ino` 0 for every file would hide a distinct project file's notice (no file is read either way).
 - Pre-completion reviewer: PASS (round 4).
+
+## Stage: Sync (worktree) (2026-11-28T04:40:50Z)
+
+### Session summary
+
+Pre-push checks passed (`pnpm run lint`, `pnpm fallow dead-code`), and local `main` had no commits beyond the branch base, so the rebase is a no-op.
+The plan's marker is `**Release:** ship independently`: two `feat(pi-permission-system)!:` commits make it a major for `pi-permission-system`.
+
+**Peer session transcript:** `/Users/chris/.pi/agent/sessions/--Users-chris-development-pi-pi-packages-worktrees-issue-1126--/2026-11-28T03-51-24-740Z_01a22047-7943-77de-ab81-12134bb55674.jsonl`: read it with `read_session_file({ path: "<path>" })` for message-level verification at land/retro time.
+
+### Observations
+
+- No follow-up issues were filed.
+  The accepted reviewer notes (a footer missing the trust qualifier, an inode-0 filesystem edge) are recorded in the TDD stage above.
+- The close comment should name the install-directory finding: since 31.1.1 the lookup resolved to `<install dir>/src/config.json`, which is why that file's detection was dropped rather than kept as ADR 0016 §3 first said.
