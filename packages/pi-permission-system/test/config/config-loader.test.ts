@@ -1,4 +1,10 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import {
+  mkdirSync,
+  mkdtempSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -969,6 +975,26 @@ describe("findLegacyPolicyFiles", () => {
     expect(findLegacyPolicyFiles(agentDir, cwd)).toStrictEqual({
       global,
       project,
+    });
+  });
+
+  it("reports a file once, as global, when the cwd's legacy file is the global one", () => {
+    const home = join(tempDir, "home");
+    const homeAgentDir = join(home, ".pi", "agent");
+    const global = writeFile(homeAgentDir, "pi-permissions.jsonc");
+
+    expect(findLegacyPolicyFiles(homeAgentDir, home)).toStrictEqual({ global });
+  });
+
+  it("reports a file once when the agent dir reaches it through a symlinked home", () => {
+    const realHome = join(tempDir, "real-home");
+    writeFile(join(realHome, ".pi", "agent"), "pi-permissions.jsonc");
+    const linkedHome = join(tempDir, "linked-home");
+    symlinkSync(realHome, linkedHome);
+    const linkedAgentDir = join(linkedHome, ".pi", "agent");
+
+    expect(findLegacyPolicyFiles(linkedAgentDir, realHome)).toStrictEqual({
+      global: join(linkedAgentDir, "pi-permissions.jsonc"),
     });
   });
 

@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import type { ZodError } from "zod";
 import { mergeFlatPermissions } from "#src/policy/permission-merge";
 import type { FlatPermissionConfig, PatternValue } from "#src/types";
@@ -382,7 +382,11 @@ export interface LegacyPolicyFiles {
  * Find the legacy policy files that exist.
  *
  * The project file is looked for only under a non-empty `cwd`; the caller
- * withholds `cwd` when the project scope is not to be consulted.
+ * withholds `cwd` when the project scope is not to be consulted. When `cwd` is
+ * the directory holding the agent directory (Pi run from home), the two paths
+ * name one file, which is reported once, as the global file; the comparison is
+ * by file identity, so a symlinked home or a case-only spelling difference
+ * still names one file.
  */
 export function findLegacyPolicyFiles(
   agentDir: string,
@@ -393,9 +397,32 @@ export function findLegacyPolicyFiles(
   if (existsSync(globalPath)) found.global = globalPath;
   if (cwd) {
     const projectPath = getLegacyProjectPolicyPath(cwd);
-    if (existsSync(projectPath)) found.project = projectPath;
+    if (
+      existsSync(projectPath) &&
+      !(found.global !== undefined && isSameFile(projectPath, found.global))
+    ) {
+      found.project = projectPath;
+    }
   }
   return found;
+}
+
+/**
+ * Whether two paths name one file on disk.
+ *
+ * `bigint` keeps a 64-bit NTFS file index exact, where a `number` rounds its
+ * low bits away. A path that vanishes or turns unreadable mid-check counts as
+ * a different file, so the project file is still reported.
+ */
+function isSameFile(a: string, b: string): boolean {
+  try {
+    const statA = statSync(a, { bigint: true, throwIfNoEntry: false });
+    const statB = statSync(b, { bigint: true, throwIfNoEntry: false });
+    if (statA === undefined || statB === undefined) return false;
+    return statA.dev === statB.dev && statA.ino === statB.ino;
+  } catch {
+    return false;
+  }
 }
 
 /** The notice for a legacy file at `path`, whose settings belong in `replacement`. */
