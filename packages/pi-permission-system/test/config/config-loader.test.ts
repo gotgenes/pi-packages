@@ -11,6 +11,7 @@ import {
   loadUnifiedConfig,
   mergeUnifiedConfigs,
   stripJsonComments,
+  type UnifiedPermissionConfig,
 } from "#src/config/config-loader";
 
 describe("stripJsonComments", () => {
@@ -823,6 +824,105 @@ describe("mergeUnifiedConfigs", () => {
   it("shellTools is absent when both base and override omit it", () => {
     const merged = mergeUnifiedConfigs({ debugLog: true }, { yoloMode: false });
     expect(merged).not.toHaveProperty("shellTools");
+  });
+
+  describe("override-wins keys", () => {
+    const rows: {
+      key: keyof UnifiedPermissionConfig;
+      base: UnifiedPermissionConfig;
+      override: UnifiedPermissionConfig;
+    }[] = [
+      {
+        key: "debugLog",
+        base: { debugLog: true },
+        override: { debugLog: false },
+      },
+      {
+        key: "permissionReviewLog",
+        base: { permissionReviewLog: false },
+        override: { permissionReviewLog: true },
+      },
+      {
+        key: "yoloMode",
+        base: { yoloMode: true },
+        override: { yoloMode: false },
+      },
+      {
+        key: "doublePressToConfirm",
+        base: { doublePressToConfirm: true },
+        override: { doublePressToConfirm: false },
+      },
+      {
+        key: "forwardingTimeoutMs",
+        base: { forwardingTimeoutMs: 1000 },
+        override: { forwardingTimeoutMs: 2000 },
+      },
+      {
+        key: "promptTimeoutMs",
+        base: { promptTimeoutMs: 3000 },
+        override: { promptTimeoutMs: 4000 },
+      },
+      {
+        key: "promptMaxRows",
+        base: { promptMaxRows: 10 },
+        override: { promptMaxRows: 20 },
+      },
+      {
+        key: "promptFieldMaxWidth",
+        base: { promptFieldMaxWidth: 100 },
+        override: { promptFieldMaxWidth: 200 },
+      },
+      {
+        key: "reviewLogFieldMaxWidth",
+        base: { reviewLogFieldMaxWidth: 500 },
+        override: { reviewLogFieldMaxWidth: 600 },
+      },
+      {
+        key: "toolInputPreviewMaxLength",
+        base: { toolInputPreviewMaxLength: 300 },
+        override: { toolInputPreviewMaxLength: 400 },
+      },
+      {
+        key: "toolTextSummaryMaxLength",
+        base: { toolTextSummaryMaxLength: 700 },
+        override: { toolTextSummaryMaxLength: 800 },
+      },
+      {
+        key: "piInfrastructureReadPaths",
+        base: { piInfrastructureReadPaths: ["/base"] },
+        override: { piInfrastructureReadPaths: ["/override"] },
+      },
+      {
+        key: "authorizerChain",
+        base: { authorizerChain: ["base-judge"] },
+        override: { authorizerChain: ["override-judge"] },
+      },
+      {
+        key: "permissionDialogKeys",
+        base: { permissionDialogKeys: { approve: "1" } },
+        override: { permissionDialogKeys: { deny: "8" } },
+      },
+      {
+        key: "promptNotifications",
+        base: { promptNotifications: ["bell"] },
+        override: { promptNotifications: ["osc9"] },
+      },
+    ];
+
+    it.each(rows)("$key: the override's value wins", ({ base, override }) => {
+      expect(mergeUnifiedConfigs(base, override)).toStrictEqual(override);
+    });
+
+    it.each(rows)(
+      "$key: the base's value carries when the override omits it",
+      ({ base }) => {
+        expect(mergeUnifiedConfigs(base, {})).toStrictEqual(base);
+      },
+    );
+
+    it.each(rows)("$key: stays absent when both omit it", ({ key }) => {
+      expect(mergeUnifiedConfigs({}, {})).not.toHaveProperty(key);
+    });
   });
 });
 
